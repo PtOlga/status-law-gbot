@@ -1,13 +1,18 @@
 import os
 from dotenv import load_dotenv
 
-# Загрузка переменных окружения
-load_dotenv()
-
 # Отладочная информация
 print("Текущая директория:", os.getcwd())
-print("Путь к .env:", os.path.join(os.getcwd(), '.env'))
-print("Все переменные окружения:", {k: v for k, v in os.environ.items() if 'TOKEN' in k})
+env_path = os.path.join(os.getcwd(), '.env')
+print("Путь к .env:", env_path)
+print("Файл .env существует:", os.path.exists(env_path))
+
+if os.path.exists(env_path):
+    with open(env_path, 'r') as f:
+        print("Содержимое .env файла:", f.read())
+
+# Загрузка переменных окружения
+load_dotenv()
 
 # Пути к директориям
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
