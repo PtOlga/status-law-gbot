@@ -1,0 +1,27 @@
+# Vector store files
+status-law-knowledge-base/vector_store/
+vector_store/
+*.faiss
+*.pkl
+
+# Chat history
+status-law-knowledge-base/chat_history/
+chat_history/
+*.json
+
+# Hugging Face specific
+.huggingface/
+
+# Python specific
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDE specific
+.vscode/
+.idea/
