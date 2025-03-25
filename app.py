@@ -2,11 +2,14 @@ import gradio as gr
 import os
 from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
-from config.settings import DEFAULT_MODEL
+from config.settings import DEFAULT_MODEL, HF_TOKEN
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 
-# Создаем клиент для инференса
-client = InferenceClient(DEFAULT_MODEL)
+# Создаем клиент для инференса с токеном
+client = InferenceClient(
+    DEFAULT_MODEL,
+    token=HF_TOKEN
+)
 
 # Состояние для хранения контекста
 context_store = {}
