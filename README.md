@@ -1,5 +1,5 @@
 ---
-title: Gradio Chatbot
+title: Status Law Gbot
 emoji: 💬
 colorFrom: yellow
 colorTo: purple
