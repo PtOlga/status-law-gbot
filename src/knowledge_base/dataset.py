@@ -8,23 +8,23 @@ import tempfile
 from typing import Tuple, List, Dict, Any, Optional
 from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
-from config.settings import VECTOR_STORE_PATH
+from config.settings import VECTOR_STORE_PATH, HF_TOKEN
 
 class DatasetManager:
     def __init__(self, dataset_name="Rulga/status-law-knowledge-base", token: Optional[str] = None):
         """
-        Инициализация менеджера датасетов
+        Initialize dataset manager
         
         Args:
-            dataset_name: Имя датасета на Hugging Face Hub
-            token: Токен доступа к Hugging Face Hub (если не задан, берется из ~/.huggingface/token)
+            dataset_name: Hugging Face Hub dataset name
+            token: Hugging Face access token (if None, will use HF_TOKEN from settings)
         """
-        self.token = token if token else HfFolder.get_token()
+        self.token = token if token else HF_TOKEN
         if not self.token:
-            raise ValueError("Не найден токен Hugging Face. Установите переменную окружения HUGGINGFACE_TOKEN")
+            raise ValueError("Hugging Face token not found. Please set HUGGINGFACE_TOKEN environment variable")
             
-        self.api = HfApi(token=self.token)
         self.dataset_name = dataset_name
+        self.api = HfApi(token=self.token)
         
         # Проверяем/создаем репозиторий при инициализации
         try:

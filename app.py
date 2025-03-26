@@ -5,7 +5,10 @@ from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import DEFAULT_MODEL, HF_TOKEN
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 
-# Создаем клиент для инференса с токеном
+if not HF_TOKEN:
+    raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
+
+# Initialize HF client with token
 client = InferenceClient(
     DEFAULT_MODEL,
     token=HF_TOKEN
@@ -92,12 +95,17 @@ def respond(
             messages.append({"role": "assistant", "content": response})
             try:
                 from src.knowledge_base.dataset import DatasetManager
-                dataset = DatasetManager()
+                from config.settings import HF_TOKEN
+                
+                dataset = DatasetManager(token=HF_TOKEN)  # Explicitly pass the token
                 success, msg = dataset.save_chat_history(conversation_id, messages)
+                print(f"Chat history save attempt: {success}, Message: {msg}")  # Add debug log
                 if not success:
-                    print(f"Ошибка при сохранении истории чата: {msg}")
+                    print(f"Failed to save chat history: {msg}")
             except Exception as e:
-                print(f"Ошибка при сохранении истории чата: {str(e)}")
+                import traceback
+                print(f"Exception while saving chat history: {str(e)}")
+                print(traceback.format_exc())  # Print full traceback for debugging
             
     except Exception as e:
         print(f"Ошибка при генерации ответа: {str(e)}")
