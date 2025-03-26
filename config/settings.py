@@ -2,10 +2,10 @@ import os
 from dotenv import load_dotenv
 
 # Debug information
-print("Current directory:", os.getcwd())
+#print("Current directory:", os.getcwd())
 env_path = os.path.join(os.getcwd(), '.env')
-print("Path to .env:", env_path)
-print(".env file exists:", os.path.exists(env_path))
+#print("Path to .env:", env_path)
+#print(".env file exists:", os.path.exists(env_path))
 
 if os.path.exists(env_path):
     with open(env_path, 'r') as f:
@@ -18,14 +18,16 @@ load_dotenv(verbose=True)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VECTOR_STORE_PATH = os.path.join(BASE_DIR, "data", "vector_store")
 
-# Add missing paths for training models
+# Добавляем недостающие пути для обучения моделей
 MODEL_PATH = os.path.join(BASE_DIR, "models")
 TRAINING_OUTPUT_DIR = os.path.join(BASE_DIR, "models", "trained")
+MODELS_REGISTRY_PATH = os.path.join(BASE_DIR, "data", "models_registry.json")
 
 # Create directories if they don't exist
 os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
 os.makedirs(MODEL_PATH, exist_ok=True)
 os.makedirs(TRAINING_OUTPUT_DIR, exist_ok=True)
+os.makedirs(os.path.dirname(MODELS_REGISTRY_PATH), exist_ok=True)
 
 # Model settings
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
