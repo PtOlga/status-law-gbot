@@ -50,7 +50,7 @@ def respond(
     # Получаем контекст из базы знаний
     context = get_context(message, conversation_id)
     
-    # Преобразуем историю из формата Gradio (список кортежей) в формат OpenAI
+    # Преобразуем историю из формата Gradio в формат OpenAI
     messages = [{"role": "system", "content": system_message}]
     if context:
         messages[0]["content"] += f"\n\nКонтекст для ответа:\n{context}"
@@ -79,6 +79,18 @@ def respond(
             response += token
             # Возвращаем в формате, который ожидает Gradio Chatbot: (user_message, assistant_message)
             yield [(message, response)], conversation_id
+
+    # После завершения генерации ответа сохраняем историю
+    messages.append({"role": "assistant", "content": response})
+    
+    try:
+        from src.knowledge_base.dataset import DatasetManager
+        dataset = DatasetManager()
+        success, msg = dataset.save_chat_history(conversation_id, messages)
+        if not success:
+            print(f"Ошибка при сохранении истории чата: {msg}")
+    except Exception as e:
+        print(f"Ошибка при сохранении истории чата: {str(e)}")
 
 def build_kb():
     """Функция для создания базы знаний"""
