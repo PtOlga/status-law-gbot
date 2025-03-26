@@ -139,6 +139,28 @@ def load_vector_store():
         print(f"Error loading knowledge base: {str(e)}")
         return None
 
+def respond_and_clear(message, history, conversation_id):
+    """Handle chat message and clear input"""
+    # Get model parameters from config
+    max_tokens = MODEL_CONFIG['parameters']['max_length']
+    temperature = MODEL_CONFIG['parameters']['temperature']
+    top_p = MODEL_CONFIG['parameters']['top_p']
+    
+    # Use system message from constants
+    response_generator = respond(
+        message=message,
+        history=history,
+        conversation_id=conversation_id,
+        system_message=DEFAULT_SYSTEM_MESSAGE,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        top_p=top_p
+    )
+    
+    # Return first yielded response
+    response, conv_id = next(response_generator)
+    return response, conv_id, ""  # Clear message input
+
 # Create interface
 with gr.Blocks() as demo:
     with gr.Tabs():
@@ -151,7 +173,7 @@ with gr.Blocks() as demo:
                 with gr.Column(scale=3):
                     chatbot = gr.Chatbot(
                         label="Chat",
-                        bubble_full_width=False,
+                        type="messages",  # Use new messages format
                         avatar_images=["user.png", "assistant.png"]
                     )
                     
@@ -162,6 +184,7 @@ with gr.Blocks() as demo:
                             scale=4
                         )
                         submit_btn = gr.Button("Send", variant="primary")
+                        clear_btn = gr.Button("Clear")  # Add clear button
                 
                 with gr.Column(scale=1):
                     gr.Markdown("### Knowledge Base Management")
@@ -170,7 +193,7 @@ with gr.Blocks() as demo:
 
             submit_btn.click(
                 respond_and_clear,
-                [msg, chatbot, conversation_id],  # Remove generation parameters
+                [msg, chatbot, conversation_id],
                 [chatbot, conversation_id, msg]
             )
             build_kb_btn.click(build_kb, None, kb_status)
