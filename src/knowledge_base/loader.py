@@ -5,7 +5,7 @@ from langchain_core.documents import Document
 from config.constants import URLS
 
 def load_documents():
-    """Загрузка документов с веб-сайта"""
+    """Load documents from website"""
     documents = []
     
     headers = {
@@ -21,8 +21,8 @@ def load_documents():
             docs = loader.load()
             if docs:
                 documents.extend(docs)
-                print(f"Загружено {url}: {len(docs)} документов")
+                print(f"Loaded {url}: {len(docs)} documents")
         except Exception as e:
-            print(f"Ошибка загрузки {url}: {str(e)}")
+            print(f"Error loading {url}: {str(e)}")
     
     return documents

@@ -9,37 +9,37 @@ from config.settings import VECTOR_STORE_PATH, EMBEDDING_MODEL, HF_TOKEN
 from config.constants import CHUNK_SIZE, CHUNK_OVERLAP
 
 def get_embeddings():
-    """Получение модели эмбеддингов"""
+    """Get embeddings model"""
     return HuggingFaceEmbeddings(
         model_name=EMBEDDING_MODEL,
         model_kwargs={'device': 'cpu'}
     )
 
 def create_vector_store():
-    """Создание векторного хранилища и загрузка в датасет"""
-    # Загрузка документов
+    """Create vector store and upload to dataset"""
+    # Load documents
     documents = load_documents()
     
     if not documents:
-        return False, "Ошибка: документы не загружены"
+        return False, "Error: documents not loaded"
     
-    # Разделение на чанки
+    # Split into chunks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=CHUNK_SIZE,
         chunk_overlap=CHUNK_OVERLAP
     )
     chunks = text_splitter.split_documents(documents)
     
-    # Инициализация эмбеддингов
+    # Initialize embeddings
     embeddings = get_embeddings()
     
-    # Создание векторного хранилища во временной директории
+    # Create vector store in temporary directory
     with tempfile.TemporaryDirectory() as temp_dir:
         vector_store = FAISS.from_documents(chunks, embeddings)
-        # Сохраняем во временную директорию
+        # Save to temporary directory
         vector_store.save_local(folder_path=temp_dir)
         
-        # Копируем файлы в VECTOR_STORE_PATH для последующей загрузки
+        # Copy files to VECTOR_STORE_PATH for subsequent loading
         os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
         for file in ["index.faiss", "index.pkl"]:
             shutil.copy2(
@@ -47,21 +47,21 @@ def create_vector_store():
                 os.path.join(VECTOR_STORE_PATH, file)
             )
         
-        # Загрузка в датасет с явной передачей токена
+        # Upload to dataset with explicit token passing
         from src.knowledge_base.dataset import DatasetManager
         dataset = DatasetManager(token=HF_TOKEN)
         success, message = dataset.upload_vector_store()
         
-        # Очищаем локальные файлы после загрузки
+        # Clean up local files after upload
         shutil.rmtree(VECTOR_STORE_PATH)
         
         if not success:
-            return False, f"Ошибка загрузки в датасет: {message}"
+            return False, f"Error uploading to dataset: {message}"
     
-    return True, f"База знаний создана успешно! Загружено {len(documents)} документов, создано {len(chunks)} чанков."
+    return True, f"Knowledge base created successfully! Loaded {len(documents)} documents, created {len(chunks)} chunks."
 
 def load_vector_store():
-    """Загрузка векторного хранилища"""
+    """Load vector store"""
     embeddings = get_embeddings()
     
     if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
@@ -75,5 +75,5 @@ def load_vector_store():
         )
         return vector_store
     except Exception as e:
-        print(f"Ошибка загрузки векторного хранилища: {str(e)}")
+        print(f"Error loading vector store: {str(e)}")
         return None

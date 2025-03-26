@@ -1,31 +1,31 @@
 import os
 from dotenv import load_dotenv
 
-# Отладочная информация
-print("Текущая директория:", os.getcwd())
+# Debug information
+print("Current directory:", os.getcwd())
 env_path = os.path.join(os.getcwd(), '.env')
-print("Путь к .env:", env_path)
-print("Файл .env существует:", os.path.exists(env_path))
+print("Path to .env:", env_path)
+print(".env file exists:", os.path.exists(env_path))
 
 if os.path.exists(env_path):
     with open(env_path, 'r') as f:
-        print("Содержимое .env файла:", f.read())
+        print("Contents of .env file:", f.read())
 
-# Загрузка переменных окружения
+# Load environment variables
 load_dotenv(verbose=True)
 
-# Пути к директориям
+# Directory paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VECTOR_STORE_PATH = os.path.join(BASE_DIR, "data", "vector_store")
 
-# Настройки моделей
+# Model settings
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
 
-# API токены
+# API tokens
 HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 if not HF_TOKEN:
-    raise ValueError("HUGGINGFACE_TOKEN не найден в переменных окружения")
+    raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
-# Настройки запросов
+# Request settings
 USER_AGENT = "Status-Law-Assistant/1.0"
