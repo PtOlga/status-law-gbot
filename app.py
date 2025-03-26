@@ -50,35 +50,35 @@ def respond(
     # Получаем контекст из базы знаний
     context = get_context(message, conversation_id)
     
-    # Формируем полную системную инструкцию с контекстом
-    full_system_message = system_message
+    # Преобразуем историю из формата Gradio (список кортежей) в формат OpenAI
+    messages = [{"role": "system", "content": system_message}]
     if context:
-        full_system_message += f"\n\nКонтекст для ответа:\n{context}"
+        messages[0]["content"] += f"\n\nКонтекст для ответа:\n{context}"
     
-    # Формируем сообщения для LLM
-    messages = [{"role": "system", "content": full_system_message}]
-    
-    # Преобразуем историю в формат для API
-    for user_msg, bot_msg in history:
-        messages.append({"role": "user", "content": user_msg})
-        messages.append({"role": "assistant", "content": bot_msg})
+    # Конвертируем историю в формат OpenAI
+    for user_msg, assistant_msg in history:
+        messages.extend([
+            {"role": "user", "content": user_msg},
+            {"role": "assistant", "content": assistant_msg}
+        ])
     
     # Добавляем текущее сообщение пользователя
     messages.append({"role": "user", "content": message})
     
     # Отправляем запрос к API и стримим ответ
     response = ""
-    for message in client.chat_completion(
+    for chunk in client.chat_completion(
         messages,
         max_tokens=max_tokens,
         stream=True,
         temperature=temperature,
         top_p=top_p,
     ):
-        token = message.choices[0].delta.content
+        token = chunk.choices[0].delta.content
         if token:
             response += token
-            yield response, conversation_id
+            # Возвращаем в формате, который ожидает Gradio Chatbot: (user_message, assistant_message)
+            yield [(message, response)], conversation_id
 
 def build_kb():
     """Функция для создания базы знаний"""
@@ -96,7 +96,11 @@ with gr.Blocks() as demo:
     
     with gr.Row():
         with gr.Column(scale=3):
-            chatbot = gr.Chatbot(label="Чат")
+            chatbot = gr.Chatbot(
+                label="Чат",
+                bubble_full_width=False,
+                avatar_images=["user.png", "assistant.png"]  # опционально
+            )
             
             with gr.Row():
                 msg = gr.Textbox(
