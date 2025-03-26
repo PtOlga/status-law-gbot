@@ -67,30 +67,43 @@ def respond(
     
     # Отправляем запрос к API и стримим ответ
     response = ""
-    for chunk in client.chat_completion(
-        messages,
-        max_tokens=max_tokens,
-        stream=True,
-        temperature=temperature,
-        top_p=top_p,
-    ):
-        token = chunk.choices[0].delta.content
-        if token:
-            response += token
-            # Возвращаем в формате, который ожидает Gradio Chatbot: (user_message, assistant_message)
-            yield [(message, response)], conversation_id
-
-    # После завершения генерации ответа сохраняем историю
-    messages.append({"role": "assistant", "content": response})
+    last_token = ""
+    sentence_end_chars = {'.', '!', '?', '\n'}
     
     try:
-        from src.knowledge_base.dataset import DatasetManager
-        dataset = DatasetManager()
-        success, msg = dataset.save_chat_history(conversation_id, messages)
-        if not success:
-            print(f"Ошибка при сохранении истории чата: {msg}")
+        for chunk in client.chat_completion(
+            messages,
+            max_tokens=max_tokens,
+            stream=True,
+            temperature=temperature,
+            top_p=top_p,
+        ):
+            token = chunk.choices[0].delta.content
+            if token:
+                response += token
+                last_token = token
+                yield [(message, response)], conversation_id
+
+        # Проверяем, завершено ли последнее предложение
+        if last_token and last_token[-1] not in sentence_end_chars:
+            # Добавляем точку, если предложение не завершено
+            response += "."
+            yield [(message, response)], conversation_id
+
+        # Сохраняем историю после полного ответа
+        messages.append({"role": "assistant", "content": response})
+        try:
+            from src.knowledge_base.dataset import DatasetManager
+            dataset = DatasetManager()
+            success, msg = dataset.save_chat_history(conversation_id, messages)
+            if not success:
+                print(f"Ошибка при сохранении истории чата: {msg}")
+        except Exception as e:
+            print(f"Ошибка при сохранении истории чата: {str(e)}")
+            
     except Exception as e:
-        print(f"Ошибка при сохранении истории чата: {str(e)}")
+        print(f"Ошибка при генерации ответа: {str(e)}")
+        yield [(message, "Произошла ошибка при генерации ответа.")], conversation_id
 
 def build_kb():
     """Функция для создания базы знаний"""
