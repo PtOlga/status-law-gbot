@@ -115,46 +115,67 @@ with gr.Blocks() as demo:
             build_kb_btn = gr.Button("Создать/обновить базу знаний", variant="primary")
             kb_status = gr.Textbox(label="Статус базы знаний", interactive=False)
             
-            gr.Markdown("### Настройки чата")
-            system_message = gr.Textbox(
-                label="Системное сообщение", 
-                value=DEFAULT_SYSTEM_MESSAGE,
-                lines=5
-            )
+            gr.Markdown("### Настройки генерации")
             max_tokens = gr.Slider(
                 minimum=1, 
                 maximum=2048, 
                 value=512, 
                 step=1, 
-                label="Максимальное количество токенов"
+                label="Максимальная длина ответа",
+                info="Ограничивает количество токенов в ответе. Больше токенов = длиннее ответ"
             )
             temperature = gr.Slider(
                 minimum=0.1, 
                 maximum=2.0, 
                 value=0.7, 
                 step=0.1, 
-                label="Температура"
+                label="Температура",
+                info="Контролирует креативность. Ниже значение = более предсказуемые ответы"
             )
             top_p = gr.Slider(
                 minimum=0.1, 
                 maximum=1.0, 
                 value=0.95, 
                 step=0.05, 
-                label="Top-p (nucleus sampling)"
+                label="Top-p",
+                info="Контролирует разнообразие. Ниже значение = более сфокусированные ответы"
             )
             
             clear_btn = gr.Button("Очистить историю чата")
-    
+
+    def respond_and_clear(
+        message,
+        history,
+        conversation_id,
+        max_tokens,
+        temperature,
+        top_p,
+    ):
+        # Используем существующую функцию respond
+        response_generator = respond(
+            message,
+            history,
+            conversation_id,
+            DEFAULT_SYSTEM_MESSAGE,
+            max_tokens,
+            temperature,
+            top_p,
+        )
+        
+        # Возвращаем результат и пустую строку для очистки поля ввода
+        for response in response_generator:
+            yield response[0], response[1], ""  # chatbot, conversation_id, пустая строка для msg
+
     # Обработчики событий
     msg.submit(
-        respond, 
-        [msg, chatbot, conversation_id, system_message, max_tokens, temperature, top_p], 
-        [chatbot, conversation_id]
+        respond_and_clear,
+        [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
+        [chatbot, conversation_id, msg]  # Добавляем msg в выходные параметры
     )
     submit_btn.click(
-        respond, 
-        [msg, chatbot, conversation_id, system_message, max_tokens, temperature, top_p], 
-        [chatbot, conversation_id]
+        respond_and_clear,
+        [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
+        [chatbot, conversation_id, msg]  # Добавляем msg в выходные параметры
     )
     build_kb_btn.click(build_kb, None, kb_status)
     clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
