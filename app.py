@@ -135,7 +135,7 @@ def load_vector_store():
 
 # Create interface
 with gr.Blocks() as demo:
-    gr.Markdown("# 🤖 Status Law Assistant")
+    gr.Markdown("# ⚖️ Status Law Assistant")
     
     conversation_id = gr.State(None)
     
