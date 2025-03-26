@@ -2,7 +2,7 @@ import gradio as gr
 import os
 from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
-from config.settings import DEFAULT_MODEL, HF_TOKEN, MODEL_CONFIG
+from config.settings import HF_TOKEN, MODEL_CONFIG
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
     get_models_df,
@@ -16,7 +16,7 @@ if not HF_TOKEN:
 
 # Initialize HF client with token
 client = InferenceClient(
-    DEFAULT_MODEL,
+    MODEL_CONFIG["id"],  # Use model ID from config instead of DEFAULT_MODEL
     token=HF_TOKEN
 )
 
