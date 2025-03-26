@@ -9,6 +9,7 @@ if not HF_TOKEN:
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 TRAINING_OUTPUT_DIR = os.path.join(MODEL_PATH, "fine_tuned")
 VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_store")
+MODELS_REGISTRY_PATH = os.path.join(MODEL_PATH, "registry.json")
 
 # Model configuration
 MODEL_CONFIG = {
