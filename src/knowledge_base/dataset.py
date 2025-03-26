@@ -238,36 +238,65 @@ class DatasetManager:
             Tuple of (success: bool, message: str)
         """
         try:
+            # Проверяем существование директории chat_history
+            try:
+                self.api.list_repo_files(
+                    repo_id=self.dataset_name,
+                    repo_type="dataset",
+                    path="chat_history"
+                )
+            except Exception:
+                # Если директории нет, создаем её
+                with tempfile.NamedTemporaryFile(delete=False) as temp:
+                    self.api.upload_file(
+                        path_or_fileobj=temp.name,
+                        path_in_repo="chat_history/.gitkeep",
+                        repo_id=self.dataset_name,
+                        repo_type="dataset"
+                    )
+                    os.unlink(temp.name)
+
             # Create filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"chat_history/{conversation_id}_{timestamp}.json"
             
-            # Prepare data for saving
+            # Prepare data for saving with additional metadata
             chat_data = {
                 "conversation_id": conversation_id,
                 "timestamp": timestamp,
-                "messages": messages
+                "messages": messages,
+                "metadata": {
+                    "saved_at": datetime.now().isoformat(),
+                    "messages_count": len(messages)
+                }
             }
             
-            # Use temporary file for safe writing
+            # Use temporary file for safe writing with explicit encoding
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False, encoding="utf-8") as temp:
                 json.dump(chat_data, temp, ensure_ascii=False, indent=2)
+                temp.flush()  # Ensure all data is written
                 temp_name = temp.name
 
-            # Upload to Hugging Face Hub
-            self.api.upload_file(
-                path_or_fileobj=temp_name,
-                path_in_repo=filename,
-                repo_id=self.dataset_name,
-                repo_type="dataset"
-            )
+            try:
+                # Upload to Hugging Face Hub with explicit error handling
+                self.api.upload_file(
+                    path_or_fileobj=temp_name,
+                    path_in_repo=filename,
+                    repo_id=self.dataset_name,
+                    repo_type="dataset"
+                )
+            except Exception as upload_error:
+                return False, f"Failed to upload chat history: {str(upload_error)}"
+            finally:
+                # Clean up temporary file
+                if os.path.exists(temp_name):
+                    os.unlink(temp_name)
             
-            # Clean up temporary file
-            os.unlink(temp_name)
-            
-            return True, "Chat history saved successfully"
+            print(f"Successfully saved chat history: {filename}")  # Добавляем лог для отладки
+            return True, f"Chat history saved successfully as {filename}"
         
         except Exception as e:
+            print(f"Error in save_chat_history: {str(e)}")  # Добавляем лог для отладки
             return False, f"Failed to save chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
