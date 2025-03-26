@@ -202,5 +202,18 @@ class ChatAnalyzer:
         except Exception as e:
             return False, f"Error exporting training data: {str(e)}"
 
+    def get_chat_data(self) -> List[Dict[str, Any]]:
+        """
+        Get all chat data from dataset
+        
+        Returns:
+            List of chat histories
+        """
+        success, chat_data = self.dataset_manager.get_chat_history()
+        if not success or not chat_data:
+            return []
+        return chat_data
+
+
 
 
