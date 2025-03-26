@@ -4,6 +4,12 @@ from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import DEFAULT_MODEL, HF_TOKEN
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
+from web.training_interface import (
+    get_models_df,
+    generate_chat_analysis,
+    register_model_action,
+    start_finetune_action
+)
 
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
@@ -135,95 +141,123 @@ def load_vector_store():
 
 # Create interface
 with gr.Blocks() as demo:
-    gr.Markdown("# ⚖️ Status Law Assistant")
-    
-    conversation_id = gr.State(None)
-    
-    with gr.Row():
-        with gr.Column(scale=3):
-            chatbot = gr.Chatbot(
-                label="Chat",
-                bubble_full_width=False,
-                avatar_images=["user.png", "assistant.png"]  # optional
-            )
+    with gr.Tabs():
+        with gr.Tab("Chat"):
+            gr.Markdown("# ⚖️ Status Law Assistant")
+            
+            conversation_id = gr.State(None)
             
             with gr.Row():
-                msg = gr.Textbox(
-                    label="Your question",
-                    placeholder="Enter your question...",
-                    scale=4
+                with gr.Column(scale=3):
+                    chatbot = gr.Chatbot(
+                        label="Chat",
+                        bubble_full_width=False,
+                        avatar_images=["user.png", "assistant.png"]  # optional
+                    )
+                    
+                    with gr.Row():
+                        msg = gr.Textbox(
+                            label="Your question",
+                            placeholder="Enter your question...",
+                            scale=4
+                        )
+                        submit_btn = gr.Button("Send", variant="primary")
+                
+                with gr.Column(scale=1):
+                    gr.Markdown("### Knowledge Base Management")
+                    build_kb_btn = gr.Button("Create/Update Knowledge Base", variant="primary")
+                    kb_status = gr.Textbox(label="Knowledge Base Status", interactive=False)
+                    
+                    gr.Markdown("### Generation Settings")
+                    max_tokens = gr.Slider(
+                        minimum=1, 
+                        maximum=2048, 
+                        value=512, 
+                        step=1, 
+                        label="Maximum Response Length",
+                        info="Limits the number of tokens in response. More tokens = longer response"
+                    )
+                    temperature = gr.Slider(
+                        minimum=0.1, 
+                        maximum=2.0, 
+                        value=0.7, 
+                        step=0.1, 
+                        label="Temperature",
+                        info="Controls creativity. Lower value = more predictable responses"
+                    )
+                    top_p = gr.Slider(
+                        minimum=0.1, 
+                        maximum=1.0, 
+                        value=0.95, 
+                        step=0.05, 
+                        label="Top-p",
+                        info="Controls diversity. Lower value = more focused responses"
+                    )
+                    
+                    clear_btn = gr.Button("Clear Chat History")
+
+            def respond_and_clear(
+                message,
+                history,
+                conversation_id,
+                max_tokens,
+                temperature,
+                top_p,
+            ):
+                # Use existing respond function
+                response_generator = respond(
+                    message,
+                    history,
+                    conversation_id,
+                    DEFAULT_SYSTEM_MESSAGE,
+                    max_tokens,
+                    temperature,
+                    top_p,
                 )
-                submit_btn = gr.Button("Send", variant="primary")
-        
-        with gr.Column(scale=1):
-            gr.Markdown("### Knowledge Base Management")
-            build_kb_btn = gr.Button("Create/Update Knowledge Base", variant="primary")
-            kb_status = gr.Textbox(label="Knowledge Base Status", interactive=False)
-            
-            gr.Markdown("### Generation Settings")
-            max_tokens = gr.Slider(
-                minimum=1, 
-                maximum=2048, 
-                value=512, 
-                step=1, 
-                label="Maximum Response Length",
-                info="Limits the number of tokens in response. More tokens = longer response"
-            )
-            temperature = gr.Slider(
-                minimum=0.1, 
-                maximum=2.0, 
-                value=0.7, 
-                step=0.1, 
-                label="Temperature",
-                info="Controls creativity. Lower value = more predictable responses"
-            )
-            top_p = gr.Slider(
-                minimum=0.1, 
-                maximum=1.0, 
-                value=0.95, 
-                step=0.05, 
-                label="Top-p",
-                info="Controls diversity. Lower value = more focused responses"
-            )
-            
-            clear_btn = gr.Button("Clear Chat History")
+                
+                # Return result and empty string to clear input field
+                for response in response_generator:
+                    yield response[0], response[1], ""  # chatbot, conversation_id, empty string for msg
 
-    def respond_and_clear(
-        message,
-        history,
-        conversation_id,
-        max_tokens,
-        temperature,
-        top_p,
-    ):
-        # Use existing respond function
-        response_generator = respond(
-            message,
-            history,
-            conversation_id,
-            DEFAULT_SYSTEM_MESSAGE,
-            max_tokens,
-            temperature,
-            top_p,
-        )
-        
-        # Return result and empty string to clear input field
-        for response in response_generator:
-            yield response[0], response[1], ""  # chatbot, conversation_id, empty string for msg
+            # Event handlers
+            msg.submit(
+                respond_and_clear,
+                [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
+                [chatbot, conversation_id, msg]  # Add msg to output parameters
+            )
+            submit_btn.click(
+                respond_and_clear,
+                [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
+                [chatbot, conversation_id, msg]  # Add msg to output parameters
+            )
+            build_kb_btn.click(build_kb, None, kb_status)
+            clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
 
-    # Event handlers
-    msg.submit(
-        respond_and_clear,
-        [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
-        [chatbot, conversation_id, msg]  # Add msg to output parameters
-    )
-    submit_btn.click(
-        respond_and_clear,
-        [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
-        [chatbot, conversation_id, msg]  # Add msg to output parameters
-    )
-    build_kb_btn.click(build_kb, None, kb_status)
-    clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
+        with gr.Tab("Model Training"):
+            gr.Markdown("### Model Training Interface")
+            
+            with gr.Row():
+                with gr.Column():
+                    epochs = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of Epochs")
+                    batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
+                    learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
+                    train_btn = gr.Button("Start Training", variant="primary")
+                    training_output = gr.Textbox(label="Training Status", interactive=False)
+
+                with gr.Column():
+                    analysis_btn = gr.Button("Generate Chat Analysis")
+                    analysis_output = gr.Markdown()
+            
+            train_btn.click(
+                start_finetune_action,
+                inputs=[epochs, batch_size, learning_rate],
+                outputs=[training_output]
+            )
+            analysis_btn.click(
+                generate_chat_analysis,
+                inputs=[],
+                outputs=[analysis_output]
+            )
 
 # Launch application
 if __name__ == "__main__":
