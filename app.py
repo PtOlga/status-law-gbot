@@ -88,6 +88,20 @@ def build_kb():
     except Exception as e:
         return f"Ошибка при создании базы знаний: {str(e)}"
 
+def load_vector_store():
+    """Загрузка базы знаний из датасета"""
+    try:
+        from src.knowledge_base.dataset import DatasetManager
+        dataset = DatasetManager()
+        success, store = dataset.download_vector_store()
+        if success:
+            return store
+        print(f"Ошибка загрузки базы знаний: {store}")
+        return None
+    except Exception as e:
+        print(f"Ошибка при загрузке базы знаний: {str(e)}")
+        return None
+
 # Создаем интерфейс
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Status Law Assistant")
@@ -182,8 +196,8 @@ with gr.Blocks() as demo:
 
 # Запускаем приложение
 if __name__ == "__main__":
-    # Проверяем наличие базы знаний
-    if not os.path.exists(os.path.join("data", "vector_store", "index.faiss")):
+    # Проверяем доступность базы знаний в датасете
+    if not load_vector_store():
         print("База знаний не найдена. Создайте её через интерфейс.")
     
     demo.launch()
