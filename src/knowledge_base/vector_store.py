@@ -5,7 +5,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from src.knowledge_base.loader import load_documents
-from config.settings import VECTOR_STORE_PATH, EMBEDDING_MODEL
+from config.settings import VECTOR_STORE_PATH, EMBEDDING_MODEL, HF_TOKEN
 from config.constants import CHUNK_SIZE, CHUNK_OVERLAP
 
 def get_embeddings():
@@ -47,9 +47,9 @@ def create_vector_store():
                 os.path.join(VECTOR_STORE_PATH, file)
             )
         
-        # Загрузка в датасет
+        # Загрузка в датасет с явной передачей токена
         from src.knowledge_base.dataset import DatasetManager
-        dataset = DatasetManager()
+        dataset = DatasetManager(token=HF_TOKEN)
         success, message = dataset.upload_vector_store()
         
         # Очищаем локальные файлы после загрузки

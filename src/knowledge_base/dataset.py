@@ -19,10 +19,24 @@ class DatasetManager:
             dataset_name: Имя датасета на Hugging Face Hub
             token: Токен доступа к Hugging Face Hub (если не задан, берется из ~/.huggingface/token)
         """
-        self.api = HfApi(token=token)
-        self.dataset_name = dataset_name
         self.token = token if token else HfFolder.get_token()
+        if not self.token:
+            raise ValueError("Не найден токен Hugging Face. Установите переменную окружения HUGGINGFACE_TOKEN")
+            
+        self.api = HfApi(token=self.token)
+        self.dataset_name = dataset_name
         
+        # Проверяем/создаем репозиторий при инициализации
+        try:
+            self.api.repo_info(repo_id=self.dataset_name, repo_type="dataset")
+        except Exception:
+            print(f"Создаем новый репозиторий датасета: {self.dataset_name}")
+            self.api.create_repo(
+                repo_id=self.dataset_name,
+                repo_type="dataset",
+                private=True
+            )
+
     def init_dataset_structure(self) -> Tuple[bool, str]:
         """
         Инициализация структуры датасета на Hugging Face
