@@ -67,8 +67,7 @@ def respond(
     
     # Отправляем запрос к API и стримим ответ
     response = ""
-    last_token = ""
-    sentence_end_chars = {'.', '!', '?', '\n'}
+    is_complete = False
     
     try:
         for chunk in client.chat_completion(
@@ -78,28 +77,27 @@ def respond(
             temperature=temperature,
             top_p=top_p,
         ):
+            # Проверяем наличие finish_reason в chunk
+            if hasattr(chunk.choices[0], 'finish_reason') and chunk.choices[0].finish_reason is not None:
+                is_complete = True
+                break
+                
             token = chunk.choices[0].delta.content
             if token:
                 response += token
-                last_token = token
                 yield [(message, response)], conversation_id
 
-        # Проверяем, завершено ли последнее предложение
-        if last_token and last_token[-1] not in sentence_end_chars:
-            # Добавляем точку, если предложение не завершено
-            response += "."
-            yield [(message, response)], conversation_id
-
-        # Сохраняем историю после полного ответа
-        messages.append({"role": "assistant", "content": response})
-        try:
-            from src.knowledge_base.dataset import DatasetManager
-            dataset = DatasetManager()
-            success, msg = dataset.save_chat_history(conversation_id, messages)
-            if not success:
-                print(f"Ошибка при сохранении истории чата: {msg}")
-        except Exception as e:
-            print(f"Ошибка при сохранении истории чата: {str(e)}")
+        # Если ответ завершен, сохраняем историю
+        if is_complete or response:  # добавляем проверку на наличие ответа как запасной вариант
+            messages.append({"role": "assistant", "content": response})
+            try:
+                from src.knowledge_base.dataset import DatasetManager
+                dataset = DatasetManager()
+                success, msg = dataset.save_chat_history(conversation_id, messages)
+                if not success:
+                    print(f"Ошибка при сохранении истории чата: {msg}")
+            except Exception as e:
+                print(f"Ошибка при сохранении истории чата: {str(e)}")
             
     except Exception as e:
         print(f"Ошибка при генерации ответа: {str(e)}")

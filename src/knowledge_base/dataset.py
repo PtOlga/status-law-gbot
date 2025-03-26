@@ -226,50 +226,49 @@ class DatasetManager:
         except Exception as e:
             return False, f"Ошибка при загрузке векторного хранилища: {str(e)}"
 
-    def save_chat_history(self, conversation_id: str, messages: List[Dict[str, Any]]) -> Tuple[bool, str]:
+    def save_chat_history(self, conversation_id: str, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
         """
-        Сохранение истории чата в датасет
+        Save chat history to the dataset
         
         Args:
-            conversation_id: Идентификатор беседы
-            messages: Список сообщений в формате [{role: str, content: str}]
-            
+            conversation_id: Unique conversation identifier
+            messages: List of message dictionaries with 'role' and 'content'
+        
         Returns:
-            (успех, сообщение)
+            Tuple of (success: bool, message: str)
         """
         try:
-            # Формируем имя файла с временной меткой
+            # Create filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"chat_history/{conversation_id}_{timestamp}.json"
             
-            # Создаем данные для сохранения
+            # Prepare data for saving
             chat_data = {
                 "conversation_id": conversation_id,
                 "timestamp": timestamp,
                 "messages": messages
             }
             
-            # Используем безопасный временный файл
+            # Use temporary file for safe writing
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False, encoding="utf-8") as temp:
                 json.dump(chat_data, temp, ensure_ascii=False, indent=2)
                 temp_name = temp.name
+
+            # Upload to Hugging Face Hub
+            self.api.upload_file(
+                path_or_fileobj=temp_name,
+                path_in_repo=filename,
+                repo_id=self.dataset_name,
+                repo_type="dataset"
+            )
             
-            try:
-                # Загружаем файл в датасет
-                self.api.upload_file(
-                    path_or_fileobj=temp_name,
-                    path_in_repo=filename,
-                    repo_id=self.dataset_name,
-                    repo_type="dataset"
-                )
-            finally:
-                # Удаляем временный файл в любом случае
-                if os.path.exists(temp_name):
-                    os.remove(temp_name)
+            # Clean up temporary file
+            os.unlink(temp_name)
             
-            return True, "История чата сохранена"
+            return True, "Chat history saved successfully"
+        
         except Exception as e:
-            return False, f"Ошибка при сохранении истории чата: {str(e)}"
+            return False, f"Failed to save chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
         """
