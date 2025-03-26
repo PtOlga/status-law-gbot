@@ -24,7 +24,7 @@ class ChatAnalyzer:
         Analyzes chat history and returns a report
         """
         try:
-            success, history = self.dataset_manager.load_chat_history()
+            success, history = self.dataset_manager.get_chat_history()  # Changed from load_chat_history to get_chat_history
             
             if not success:
                 return "Failed to load chat history"
@@ -34,7 +34,7 @@ class ChatAnalyzer:
             
             # Basic analysis
             total_chats = len(history)
-            total_messages = sum(len(chat) for chat in history)
+            total_messages = sum(len(chat.get("messages", [])) for chat in history)
             avg_messages = total_messages / total_chats if total_chats > 0 else 0
             
             report = f"""
@@ -201,5 +201,6 @@ class ChatAnalyzer:
             return True, f"Training data successfully exported to {output_file}. Exported {len(qa_pairs)} examples."
         except Exception as e:
             return False, f"Error exporting training data: {str(e)}"
+
 
 
