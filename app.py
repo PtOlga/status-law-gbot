@@ -65,10 +65,10 @@ def respond(
         messages[0]["content"] += f"\n\nContext for response:\n{context}"
     
     # Convert history to OpenAI format
-    for user_msg, assistant_msg in history:
+    for msg_pair in history:
         messages.extend([
-            {"role": "user", "content": user_msg},
-            {"role": "assistant", "content": assistant_msg}
+            {"role": "user", "content": msg_pair[0]["content"]},
+            {"role": "assistant", "content": msg_pair[1]["content"]}
         ])
     
     # Add current user message
@@ -94,7 +94,7 @@ def respond(
             token = chunk.choices[0].delta.content
             if token:
                 response += token
-                yield [(message, response)], conversation_id
+                yield [[{"role": "user", "content": message}, {"role": "assistant", "content": response}]], conversation_id
 
         # Save history if response is complete
         if is_complete or response:  # add response check as fallback
@@ -103,19 +103,19 @@ def respond(
                 from src.knowledge_base.dataset import DatasetManager
                 from config.settings import HF_TOKEN
                 
-                dataset = DatasetManager(token=HF_TOKEN)  # Explicitly pass the token
+                dataset = DatasetManager(token=HF_TOKEN)
                 success, msg = dataset.save_chat_history(conversation_id, messages)
-                print(f"Chat history save attempt: {success}, Message: {msg}")  # Add debug log
+                print(f"Chat history save attempt: {success}, Message: {msg}")
                 if not success:
                     print(f"Failed to save chat history: {msg}")
             except Exception as e:
                 import traceback
                 print(f"Exception while saving chat history: {str(e)}")
-                print(traceback.format_exc())  # Print full traceback for debugging
+                print(traceback.format_exc())
             
     except Exception as e:
         print(f"Error generating response: {str(e)}")
-        yield [(message, "An error occurred while generating the response.")], conversation_id
+        yield [[{"role": "user", "content": message}, {"role": "assistant", "content": "An error occurred while generating the response."}]], conversation_id
 
 def build_kb():
     """Function to create knowledge base"""
@@ -158,8 +158,15 @@ def respond_and_clear(message, history, conversation_id):
     )
     
     # Return first yielded response
-    response, conv_id = next(response_generator)
-    return response, conv_id, ""  # Clear message input
+    response_data, conv_id = next(response_generator)
+    
+    # Convert response to the correct format for Gradio chatbot
+    formatted_history = history + [[
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": response_data[0][1]}
+    ]]
+    
+    return formatted_history, conv_id, ""  # Clear message input
 
 # Create interface
 with gr.Blocks() as demo:
