@@ -18,6 +18,15 @@ load_dotenv(verbose=True)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VECTOR_STORE_PATH = os.path.join(BASE_DIR, "data", "vector_store")
 
+# Add missing paths for training models
+MODEL_PATH = os.path.join(BASE_DIR, "models")
+TRAINING_OUTPUT_DIR = os.path.join(BASE_DIR, "models", "trained")
+
+# Create directories if they don't exist
+os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
+os.makedirs(MODEL_PATH, exist_ok=True)
+os.makedirs(TRAINING_OUTPUT_DIR, exist_ok=True)
+
 # Model settings
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_MODEL = "HuggingFaceH4/zephyr-7b-beta"
