@@ -1,7 +1,20 @@
+from typing import List, Dict, Any, Tuple, Optional
+from collections import Counter
+from datetime import datetime
+import re
+import json
+
 class ChatAnalyzer:
     """Chat history analyzer"""
     
-    def __init__(self):
+    def __init__(self, dataset_manager: Optional['DatasetManager'] = None):
+        """
+        Initialize chat analyzer
+        
+        Args:
+            dataset_manager: Dataset manager for getting chat history
+        """
+        self.dataset_manager = dataset_manager or DatasetManager()
         self.history = []
 
     def analyze_chats(self) -> str:
@@ -9,9 +22,7 @@ class ChatAnalyzer:
         Analyzes chat history and returns a report
         """
         try:
-            from src.knowledge_base.dataset import DatasetManager
-            dataset = DatasetManager()
-            success, history = dataset.load_chat_history()
+            success, history = self.dataset_manager.load_chat_history()
             
             if not success:
                 return "Failed to load chat history"
@@ -188,3 +199,4 @@ class ChatAnalyzer:
             return True, f"Training data successfully exported to {output_file}. Exported {len(qa_pairs)} examples."
         except Exception as e:
             return False, f"Error exporting training data: {str(e)}"
+
