@@ -14,26 +14,26 @@ client = InferenceClient(
     token=HF_TOKEN
 )
 
-# Состояние для хранения контекста
+# State for storing context
 context_store = {}
 
 def get_context(message, conversation_id):
-    """Получение контекста из базы знаний"""
+    """Get context from knowledge base"""
     vector_store = load_vector_store()
     if vector_store is None:
-        return "База знаний не найдена. Пожалуйста, создайте её сначала."
+        return "Knowledge base not found. Please create it first."
     
     try:
-        # Извлечение контекста
+        # Extract context
         context_docs = vector_store.similarity_search(message, k=3)
-        context_text = "\n\n".join([f"Из {doc.metadata.get('source', 'неизвестно')}: {doc.page_content}" for doc in context_docs])
+        context_text = "\n\n".join([f"From {doc.metadata.get('source', 'unknown')}: {doc.page_content}" for doc in context_docs])
         
-        # Сохраняем контекст для этого разговора
+        # Save context for this conversation
         context_store[conversation_id] = context_text
         
         return context_text
     except Exception as e:
-        print(f"Ошибка при получении контекста: {str(e)}")
+        print(f"Error getting context: {str(e)}")
         return ""
 
 def respond(
@@ -45,30 +45,30 @@ def respond(
     temperature,
     top_p,
 ):
-    # Если это новый разговор, создаем ID
+    # Create ID for new conversation
     if not conversation_id:
         import uuid
         conversation_id = str(uuid.uuid4())
     
-    # Получаем контекст из базы знаний
+    # Get context from knowledge base
     context = get_context(message, conversation_id)
     
-    # Преобразуем историю из формата Gradio в формат OpenAI
+    # Convert history from Gradio format to OpenAI format
     messages = [{"role": "system", "content": system_message}]
     if context:
-        messages[0]["content"] += f"\n\nКонтекст для ответа:\n{context}"
+        messages[0]["content"] += f"\n\nContext for response:\n{context}"
     
-    # Конвертируем историю в формат OpenAI
+    # Convert history to OpenAI format
     for user_msg, assistant_msg in history:
         messages.extend([
             {"role": "user", "content": user_msg},
             {"role": "assistant", "content": assistant_msg}
         ])
     
-    # Добавляем текущее сообщение пользователя
+    # Add current user message
     messages.append({"role": "user", "content": message})
     
-    # Отправляем запрос к API и стримим ответ
+    # Send API request and stream response
     response = ""
     is_complete = False
     
@@ -80,7 +80,7 @@ def respond(
             temperature=temperature,
             top_p=top_p,
         ):
-            # Проверяем наличие finish_reason в chunk
+            # Check for finish_reason in chunk
             if hasattr(chunk.choices[0], 'finish_reason') and chunk.choices[0].finish_reason is not None:
                 is_complete = True
                 break
@@ -90,8 +90,8 @@ def respond(
                 response += token
                 yield [(message, response)], conversation_id
 
-        # Если ответ завершен, сохраняем историю
-        if is_complete or response:  # добавляем проверку на наличие ответа как запасной вариант
+        # Save history if response is complete
+        if is_complete or response:  # add response check as fallback
             messages.append({"role": "assistant", "content": response})
             try:
                 from src.knowledge_base.dataset import DatasetManager
@@ -108,32 +108,32 @@ def respond(
                 print(traceback.format_exc())  # Print full traceback for debugging
             
     except Exception as e:
-        print(f"Ошибка при генерации ответа: {str(e)}")
-        yield [(message, "Произошла ошибка при генерации ответа.")], conversation_id
+        print(f"Error generating response: {str(e)}")
+        yield [(message, "An error occurred while generating the response.")], conversation_id
 
 def build_kb():
-    """Функция для создания базы знаний"""
+    """Function to create knowledge base"""
     try:
         success, message = create_vector_store()
         return message
     except Exception as e:
-        return f"Ошибка при создании базы знаний: {str(e)}"
+        return f"Error creating knowledge base: {str(e)}"
 
 def load_vector_store():
-    """Загрузка базы знаний из датасета"""
+    """Load knowledge base from dataset"""
     try:
         from src.knowledge_base.dataset import DatasetManager
         dataset = DatasetManager()
         success, store = dataset.download_vector_store()
         if success:
             return store
-        print(f"Ошибка загрузки базы знаний: {store}")
+        print(f"Error loading knowledge base: {store}")
         return None
     except Exception as e:
-        print(f"Ошибка при загрузке базы знаний: {str(e)}")
+        print(f"Error loading knowledge base: {str(e)}")
         return None
 
-# Создаем интерфейс
+# Create interface
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Status Law Assistant")
     
@@ -142,40 +142,40 @@ with gr.Blocks() as demo:
     with gr.Row():
         with gr.Column(scale=3):
             chatbot = gr.Chatbot(
-                label="Чат",
+                label="Chat",
                 bubble_full_width=False,
-                avatar_images=["user.png", "assistant.png"]  # опционально
+                avatar_images=["user.png", "assistant.png"]  # optional
             )
             
             with gr.Row():
                 msg = gr.Textbox(
-                    label="Ваш вопрос",
-                    placeholder="Введите ваш вопрос...",
+                    label="Your question",
+                    placeholder="Enter your question...",
                     scale=4
                 )
-                submit_btn = gr.Button("Отправить", variant="primary")
+                submit_btn = gr.Button("Send", variant="primary")
         
         with gr.Column(scale=1):
-            gr.Markdown("### Управление базой знаний")
-            build_kb_btn = gr.Button("Создать/обновить базу знаний", variant="primary")
-            kb_status = gr.Textbox(label="Статус базы знаний", interactive=False)
+            gr.Markdown("### Knowledge Base Management")
+            build_kb_btn = gr.Button("Create/Update Knowledge Base", variant="primary")
+            kb_status = gr.Textbox(label="Knowledge Base Status", interactive=False)
             
-            gr.Markdown("### Настройки генерации")
+            gr.Markdown("### Generation Settings")
             max_tokens = gr.Slider(
                 minimum=1, 
                 maximum=2048, 
                 value=512, 
                 step=1, 
-                label="Максимальная длина ответа",
-                info="Ограничивает количество токенов в ответе. Больше токенов = длиннее ответ"
+                label="Maximum Response Length",
+                info="Limits the number of tokens in response. More tokens = longer response"
             )
             temperature = gr.Slider(
                 minimum=0.1, 
                 maximum=2.0, 
                 value=0.7, 
                 step=0.1, 
-                label="Температура",
-                info="Контролирует креативность. Ниже значение = более предсказуемые ответы"
+                label="Temperature",
+                info="Controls creativity. Lower value = more predictable responses"
             )
             top_p = gr.Slider(
                 minimum=0.1, 
@@ -183,10 +183,10 @@ with gr.Blocks() as demo:
                 value=0.95, 
                 step=0.05, 
                 label="Top-p",
-                info="Контролирует разнообразие. Ниже значение = более сфокусированные ответы"
+                info="Controls diversity. Lower value = more focused responses"
             )
             
-            clear_btn = gr.Button("Очистить историю чата")
+            clear_btn = gr.Button("Clear Chat History")
 
     def respond_and_clear(
         message,
@@ -196,7 +196,7 @@ with gr.Blocks() as demo:
         temperature,
         top_p,
     ):
-        # Используем существующую функцию respond
+        # Use existing respond function
         response_generator = respond(
             message,
             history,
@@ -207,28 +207,28 @@ with gr.Blocks() as demo:
             top_p,
         )
         
-        # Возвращаем результат и пустую строку для очистки поля ввода
+        # Return result and empty string to clear input field
         for response in response_generator:
-            yield response[0], response[1], ""  # chatbot, conversation_id, пустая строка для msg
+            yield response[0], response[1], ""  # chatbot, conversation_id, empty string for msg
 
-    # Обработчики событий
+    # Event handlers
     msg.submit(
         respond_and_clear,
         [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
-        [chatbot, conversation_id, msg]  # Добавляем msg в выходные параметры
+        [chatbot, conversation_id, msg]  # Add msg to output parameters
     )
     submit_btn.click(
         respond_and_clear,
         [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
-        [chatbot, conversation_id, msg]  # Добавляем msg в выходные параметры
+        [chatbot, conversation_id, msg]  # Add msg to output parameters
     )
     build_kb_btn.click(build_kb, None, kb_status)
     clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
 
-# Запускаем приложение
+# Launch application
 if __name__ == "__main__":
-    # Проверяем доступность базы знаний в датасете
+    # Check knowledge base availability in dataset
     if not load_vector_store():
-        print("База знаний не найдена. Создайте её через интерфейс.")
+        print("Knowledge base not found. Please create it through the interface.")
     
     demo.launch()

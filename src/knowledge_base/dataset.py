@@ -292,40 +292,40 @@ class DatasetManager:
                 if os.path.exists(temp_name):
                     os.unlink(temp_name)
             
-            print(f"Successfully saved chat history: {filename}")  # Добавляем лог для отладки
+            print(f"Successfully saved chat history: {filename}")  # Adding a log for debugging
             return True, f"Chat history saved successfully as {filename}"
         
         except Exception as e:
-            print(f"Error in save_chat_history: {str(e)}")  # Добавляем лог для отладки
+            print(f"Error in save_chat_history: {str(e)}")  # Adding a log for debugging
             return False, f"Failed to save chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
         """
-        Получение истории чатов из датасета
+        Get chat history from the dataset
         
         Args:
-            conversation_id: Идентификатор беседы (если None, возвращает все чаты)
+            conversation_id: Conversation identifier (if None, returns all chats)
             
         Returns:
-            (успех, история чатов или сообщение об ошибке)
+            (success, chat history or error message)
         """
         try:
-            # Получаем список файлов в директории chat_history
+            # Get list of files in chat_history directory
             files = self.api.list_repo_files(
                 repo_id=self.dataset_name,
                 repo_type="dataset",
                 path="chat_history"
             )
             
-            # Фильтруем файлы по conversation_id, если он указан
+            # Filter files by conversation_id if specified
             if conversation_id:
                 files = [f for f in files if f.startswith(f"chat_history/{conversation_id}_")]
             
-            # Если файлов нет, возвращаем пустой список
+            # If no files found, return empty list
             if not files or all(f.endswith(".gitkeep") for f in files):
                 return True, []
             
-            # Создаем временную директорию для загрузки файлов
+            # Create temporary directory for downloading files
             with tempfile.TemporaryDirectory() as temp_dir:
                 chat_histories = []
                 
@@ -333,7 +333,7 @@ class DatasetManager:
                     if file.endswith(".gitkeep"):
                         continue
                         
-                    # Загружаем файл
+                    # Download file
                     local_file = self.api.hf_hub_download(
                         repo_id=self.dataset_name,
                         filename=file,
@@ -341,42 +341,42 @@ class DatasetManager:
                         local_dir=temp_dir
                     )
                     
-                    # Читаем содержимое файла
+                    # Read file content
                     with open(local_file, "r", encoding="utf-8") as f:
                         chat_data = json.load(f)
                         chat_histories.append(chat_data)
                 
-                # Сортируем по временной метке
+                # Sort by timestamp
                 chat_histories.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
                 
                 return True, chat_histories
         except Exception as e:
-            return False, f"Ошибка при получении истории чатов: {str(e)}"
+            return False, f"Error getting chat history: {str(e)}"
 
     def upload_document(self, file_path: str, document_id: Optional[str] = None) -> Tuple[bool, str]:
         """
-        Загрузка документа в датасет
+        Upload document to the dataset
         
         Args:
-            file_path: Путь к файлу документа
-            document_id: Идентификатор документа (если None, используется имя файла)
+            file_path: Path to the document file
+            document_id: Document identifier (if None, uses filename)
             
         Returns:
-            (успех, сообщение)
+            (success, message)
         """
         try:
             if not os.path.exists(file_path):
-                return False, f"Файл не найден: {file_path}"
+                return False, f"File not found: {file_path}"
                 
-            # Если document_id не указан, используем имя файла
+            # Use filename as document_id if not specified
             if document_id is None:
                 document_id = os.path.basename(file_path)
                 
-            # Добавляем временную метку к имени файла
+            # Add timestamp to filename
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"documents/{document_id}_{timestamp}{os.path.splitext(file_path)[1]}"
             
-            # Загружаем файл
+            # Upload file
             self.api.upload_file(
                 path_or_fileobj=file_path,
                 path_in_repo=filename,
@@ -384,19 +384,19 @@ class DatasetManager:
                 repo_type="dataset"
             )
             
-            return True, f"Документ успешно загружен: {filename}"
+            return True, f"Document uploaded successfully: {filename}"
         except Exception as e:
-            return False, f"Ошибка при загрузке документа: {str(e)}"
+            return False, f"Error uploading document: {str(e)}"
 
 def test_dataset_connection(token: Optional[str] = None) -> Tuple[bool, str]:
     """
-    Тестовая функция для проверки подключения к датасету
+    Test function to check dataset connection
     
     Args:
-        token: Токен доступа к Hugging Face Hub
+        token: Hugging Face Hub access token
         
     Returns:
-        (успех, сообщение)
+        (success, message)
     """
     try:
         manager = DatasetManager(token=token)
@@ -405,13 +405,13 @@ def test_dataset_connection(token: Optional[str] = None) -> Tuple[bool, str]:
         if not success:
             return False, message
             
-        print(f"Тест инициализации: {message}")
+        print(f"Initialization test: {message}")
         
-        return True, "Подключение к датасету работает"
+        return True, "Dataset connection is working"
     except Exception as e:
-        return False, f"Ошибка подключения к датасету: {str(e)}"
+        return False, f"Dataset connection error: {str(e)}"
 
 if __name__ == "__main__":
-    # Тестируем подключение
+    # Test connection
     success, message = test_dataset_connection()
     print(message)
