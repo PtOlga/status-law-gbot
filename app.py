@@ -64,12 +64,10 @@ def respond(
     if context:
         messages[0]["content"] += f"\n\nContext for response:\n{context}"
     
-    # Convert history to OpenAI format
-    for msg_pair in history:
-        messages.extend([
-            {"role": "user", "content": msg_pair[0]["content"]},
-            {"role": "assistant", "content": msg_pair[1]["content"]}
-        ])
+    # Convert history to OpenAI format for API call
+    for user_msg, assistant_msg in history:
+        messages.append({"role": "user", "content": user_msg["content"]})
+        messages.append({"role": "assistant", "content": assistant_msg["content"]})
     
     # Add current user message
     messages.append({"role": "user", "content": message})
@@ -94,7 +92,8 @@ def respond(
             token = chunk.choices[0].delta.content
             if token:
                 response += token
-                yield [[{"role": "user", "content": message}, {"role": "assistant", "content": response}]], conversation_id
+                # Return in the format expected by Gradio's message chatbot
+                yield history + [[{"role": "user", "content": message}, {"role": "assistant", "content": response}]], conversation_id
 
         # Save history if response is complete
         if is_complete or response:  # add response check as fallback
@@ -115,7 +114,7 @@ def respond(
             
     except Exception as e:
         print(f"Error generating response: {str(e)}")
-        yield [[{"role": "user", "content": message}, {"role": "assistant", "content": "An error occurred while generating the response."}]], conversation_id
+        yield history + [[{"role": "user", "content": message}, {"role": "assistant", "content": "An error occurred while generating the response."}]], conversation_id
 
 def build_kb():
     """Function to create knowledge base"""
@@ -157,16 +156,11 @@ def respond_and_clear(message, history, conversation_id):
         top_p=top_p
     )
     
-    # Return first yielded response
-    response_data, conv_id = next(response_generator)
+    # Return first yielded response directly
+    # The respond function now yields data in the expected format
+    new_history, conv_id = next(response_generator)
     
-    # Convert response to the correct format for Gradio chatbot
-    formatted_history = history + [[
-        {"role": "user", "content": message},
-        {"role": "assistant", "content": response_data[0][1]}
-    ]]
-    
-    return formatted_history, conv_id, ""  # Clear message input
+    return new_history, conv_id, ""  # Clear message input
 
 # Create interface
 with gr.Blocks() as demo:
