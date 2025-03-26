@@ -10,3 +10,7 @@ sentence-transformers>=2.2.2
 beautifulsoup4>=4.12.2
 requests>=2.31.0
 python-dotenv>=1.0.0
+peft>=0.7.0
+transformers>=4.36.0
+datasets>=2.16.0
+tensorboard>=2.15.0
