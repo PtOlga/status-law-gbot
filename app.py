@@ -2,7 +2,7 @@ import gradio as gr
 import os
 from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
-from config.settings import DEFAULT_MODEL, HF_TOKEN
+from config.settings import DEFAULT_MODEL, HF_TOKEN, MODEL_CONFIG
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
     get_models_df,
@@ -232,6 +232,77 @@ with gr.Blocks() as demo:
             )
             build_kb_btn.click(build_kb, None, kb_status)
             clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
+
+        with gr.Tab("Model Settings"):
+            gr.Markdown("### Model Configuration")
+            
+            with gr.Row():
+                with gr.Column(scale=2):
+                    # Model Information
+                    gr.Markdown(f"""
+                    **Current Model:** {MODEL_CONFIG['name']}
+                    
+                    **Model ID:** `{MODEL_CONFIG['id']}`
+                    
+                    **Description:** {MODEL_CONFIG['description']}
+                    
+                    **Type:** {MODEL_CONFIG['type']}
+                    """)
+                    
+                    gr.Markdown("### Model Parameters")
+                    with gr.Row():
+                        max_length = gr.Slider(
+                            minimum=1,
+                            maximum=4096,
+                            value=MODEL_CONFIG['parameters']['max_length'],
+                            step=1,
+                            label="Maximum Length",
+                            interactive=False
+                        )
+                        temperature = gr.Slider(
+                            minimum=0.1,
+                            maximum=2.0,
+                            value=MODEL_CONFIG['parameters']['temperature'],
+                            step=0.1,
+                            label="Temperature",
+                            interactive=False
+                        )
+                    with gr.Row():
+                        top_p = gr.Slider(
+                            minimum=0.1,
+                            maximum=1.0,
+                            value=MODEL_CONFIG['parameters']['top_p'],
+                            step=0.1,
+                            label="Top-p",
+                            interactive=False
+                        )
+                        rep_penalty = gr.Slider(
+                            minimum=1.0,
+                            maximum=2.0,
+                            value=MODEL_CONFIG['parameters']['repetition_penalty'],
+                            step=0.1,
+                            label="Repetition Penalty",
+                            interactive=False
+                        )
+                
+                with gr.Column(scale=1):
+                    gr.Markdown("### Training Configuration")
+                    gr.Markdown(f"""
+                    **Base Model Path:** 
+                    ```
+                    {MODEL_CONFIG['training']['base_model_path']}
+                    ```
+                    
+                    **Fine-tuned Model Path:**
+                    ```
+                    {MODEL_CONFIG['training']['fine_tuned_path']}
+                    ```
+                    
+                    **LoRA Configuration:**
+                    - Rank (r): {MODEL_CONFIG['training']['lora_config']['r']}
+                    - Alpha: {MODEL_CONFIG['training']['lora_config']['lora_alpha']}
+                    - Dropout: {MODEL_CONFIG['training']['lora_config']['lora_dropout']}
+                    """)
 
         with gr.Tab("Model Training"):
             gr.Markdown("### Model Training Interface")
