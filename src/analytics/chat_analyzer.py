@@ -4,6 +4,8 @@ from datetime import datetime
 import re
 import json
 
+from src.knowledge_base.dataset import DatasetManager
+
 class ChatAnalyzer:
     """Chat history analyzer"""
     
@@ -199,4 +201,5 @@ class ChatAnalyzer:
             return True, f"Training data successfully exported to {output_file}. Exported {len(qa_pairs)} examples."
         except Exception as e:
             return False, f"Error exporting training data: {str(e)}"
+
 
