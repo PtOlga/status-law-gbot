@@ -204,21 +204,21 @@ def get_model(
         raise ValueError(f"Failed to load model: {str(e)}")
 
 if __name__ == "__main__":
-    # Пример использования
+    # Usage example
     manager = ModelManager()
     
-    # Регистрация базовой модели
+    # Register base model from config
     success, message = manager.register_model(
-        model_id="saiga",
-        version="7b",
-        source="hf://IlyaGusev/saiga_7b_lora",
-        description="Базовая модель Saiga 7B с LoRA адаптерами",
+        model_id=MODEL_CONFIG["id"].split("/")[-1],  # Extract model name from full HF path
+        version=MODEL_CONFIG["type"],
+        source=MODEL_CONFIG["id"],
+        description=MODEL_CONFIG["description"],
         is_active=True
     )
     print(message)
     
-    # Вывод списка моделей
+    # Print models list
     models = manager.list_models()
-    print(f"В реестре {len(models)} моделей:")
+    print(f"Registry contains {len(models)} models:")
     for model in models:
         print(f" - {model['model_id']} v{model['version']}: {model['description']}")

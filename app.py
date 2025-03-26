@@ -152,7 +152,7 @@ with gr.Blocks() as demo:
                     chatbot = gr.Chatbot(
                         label="Chat",
                         bubble_full_width=False,
-                        avatar_images=["user.png", "assistant.png"]  # optional
+                        avatar_images=["user.png", "assistant.png"]
                     )
                     
                     with gr.Row():
@@ -167,68 +167,11 @@ with gr.Blocks() as demo:
                     gr.Markdown("### Knowledge Base Management")
                     build_kb_btn = gr.Button("Create/Update Knowledge Base", variant="primary")
                     kb_status = gr.Textbox(label="Knowledge Base Status", interactive=False)
-                    
-                    gr.Markdown("### Generation Settings")
-                    max_tokens = gr.Slider(
-                        minimum=1, 
-                        maximum=2048, 
-                        value=512, 
-                        step=1, 
-                        label="Maximum Response Length",
-                        info="Limits the number of tokens in response. More tokens = longer response"
-                    )
-                    temperature = gr.Slider(
-                        minimum=0.1, 
-                        maximum=2.0, 
-                        value=0.7, 
-                        step=0.1, 
-                        label="Temperature",
-                        info="Controls creativity. Lower value = more predictable responses"
-                    )
-                    top_p = gr.Slider(
-                        minimum=0.1, 
-                        maximum=1.0, 
-                        value=0.95, 
-                        step=0.05, 
-                        label="Top-p",
-                        info="Controls diversity. Lower value = more focused responses"
-                    )
-                    
-                    clear_btn = gr.Button("Clear Chat History")
 
-            def respond_and_clear(
-                message,
-                history,
-                conversation_id,
-                max_tokens,
-                temperature,
-                top_p,
-            ):
-                # Use existing respond function
-                response_generator = respond(
-                    message,
-                    history,
-                    conversation_id,
-                    DEFAULT_SYSTEM_MESSAGE,
-                    max_tokens,
-                    temperature,
-                    top_p,
-                )
-                
-                # Return result and empty string to clear input field
-                for response in response_generator:
-                    yield response[0], response[1], ""  # chatbot, conversation_id, empty string for msg
-
-            # Event handlers
-            msg.submit(
-                respond_and_clear,
-                [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
-                [chatbot, conversation_id, msg]  # Add msg to output parameters
-            )
             submit_btn.click(
                 respond_and_clear,
-                [msg, chatbot, conversation_id, max_tokens, temperature, top_p],
-                [chatbot, conversation_id, msg]  # Add msg to output parameters
+                [msg, chatbot, conversation_id],  # Remove generation parameters
+                [chatbot, conversation_id, msg]
             )
             build_kb_btn.click(build_kb, None, kb_status)
             clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
@@ -247,6 +190,9 @@ with gr.Blocks() as demo:
                     **Description:** {MODEL_CONFIG['description']}
                     
                     **Type:** {MODEL_CONFIG['type']}
+                    
+                    **Embeddings Model:** `{EMBEDDING_MODEL}`
+                    *Used for vector store creation and similarity search*
                     """)
                     
                     gr.Markdown("### Model Parameters")
@@ -284,6 +230,16 @@ with gr.Blocks() as demo:
                             label="Repetition Penalty",
                             interactive=False
                         )
+                    
+                    gr.Markdown("""
+                    <small>
+                    **Parameters explanation:**
+                    - **Maximum Length**: Maximum number of tokens in the generated response
+                    - **Temperature**: Controls randomness (0.1 = very focused, 2.0 = very creative)
+                    - **Top-p**: Controls diversity via nucleus sampling (lower = more focused)
+                    - **Repetition Penalty**: Prevents word repetition (higher = less repetition)
+                    </small>
+                    """)
                 
                 with gr.Column(scale=1):
                     gr.Markdown("### Training Configuration")

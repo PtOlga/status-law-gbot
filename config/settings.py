@@ -36,7 +36,7 @@ MODEL_CONFIG = {
 }
 
 # Embedding model for vector store
-EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-large"  
 
 # Request settings
 USER_AGENT = "Status-Law-Assistant/1.0"
