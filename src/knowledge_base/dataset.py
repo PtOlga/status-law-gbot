@@ -9,7 +9,7 @@ from typing import Tuple, List, Dict, Any, Optional, Union
 from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
-from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL
+from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL, DATASET_ID, CHAT_HISTORY_PATH
 from langchain_community.embeddings import HuggingFaceEmbeddings  # Updated import
 import logging
 
@@ -18,31 +18,17 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class DatasetManager:
-    def __init__(self, dataset_name="Rulga/status-law-knowledge-base", token: Optional[str] = None):
+    def __init__(self, dataset_name: Optional[str] = None, token: Optional[str] = None):
         """
         Initialize dataset manager
         
         Args:
             dataset_name: Hugging Face Hub dataset name
-            token: Hugging Face access token (if None, will use HF_TOKEN from settings)
+            token: Hugging Face access token
         """
+        self.dataset_name = dataset_name or DATASET_ID
         self.token = token if token else HF_TOKEN
-        if not self.token:
-            raise ValueError("Hugging Face token not found. Please set HUGGINGFACE_TOKEN environment variable")
-        
-        self.dataset_name = dataset_name
         self.api = HfApi(token=self.token)
-        
-        # Проверяем/создаем репозиторий при инициализации
-        try:
-            self.api.repo_info(repo_id=self.dataset_name, repo_type="dataset")
-        except Exception:
-            print(f"Создаем новый репозиторий датасета: {self.dataset_name}")
-            self.api.create_repo(
-                repo_id=self.dataset_name,
-                repo_type="dataset",
-                private=True
-            )
 
     def init_dataset_structure(self) -> Tuple[bool, str]:
         """
@@ -318,23 +304,21 @@ class DatasetManager:
         try:
             logger.info(f"Attempting to get chat history from dataset {self.dataset_name}")
             
-            # Получаем список всех файлов в репозитории
+            # Get all files from repository
             files = self.api.list_repo_files(
                 repo_id=self.dataset_name,
                 repo_type="dataset"
             )
             
-            # Фильтруем только файлы из директории chat_history
-            chat_files = [f for f in files if f.startswith("chat_history/")]
-            logger.info(f"Found {len(chat_files)} files in chat_history")
+            # Filter only files from chat_history directory using settings
+            chat_files = [f for f in files if f.startswith(f"{CHAT_HISTORY_PATH}/")]
+            logger.info(f"Found {len(chat_files)} files in {CHAT_HISTORY_PATH}")
             
-            # Фильтруем по conversation_id если указан
             if conversation_id:
-                chat_files = [f for f in chat_files if f.startswith(f"chat_history/{conversation_id}_")]
+                chat_files = [f for f in chat_files if conversation_id in f]
                 logger.info(f"Filtered to {len(chat_files)} files for conversation {conversation_id}")
             
-            # Если нет файлов, возвращаем пустой список
-            if not chat_files or all(f.endswith(".gitkeep") for f in chat_files):
+            if not chat_files:
                 logger.warning("No chat history files found")
                 return True, []
             
@@ -345,7 +329,6 @@ class DatasetManager:
                         continue
                     
                     try:
-                        # Скачиваем и читаем файл
                         local_file = self.api.hf_hub_download(
                             repo_id=self.dataset_name,
                             filename=file,
@@ -355,20 +338,32 @@ class DatasetManager:
                         
                         with open(local_file, "r", encoding="utf-8") as f:
                             chat_data = json.load(f)
-                            if not isinstance(chat_data, dict) or "messages" not in chat_data:
-                                logger.error(f"Invalid chat data structure in {file}")
+                            # Validate chat data structure
+                            if not isinstance(chat_data, dict):
+                                logger.error(f"Chat data is not a dictionary in {file}")
                                 continue
+                            if "messages" not in chat_data:
+                                logger.error(f"No 'messages' key in chat data in {file}")
+                                continue
+                            if not isinstance(chat_data["messages"], list):
+                                logger.error(f"'messages' is not a list in {file}")
+                                continue
+                            
                             chat_histories.append(chat_data)
-                        
+                            logger.info(f"Successfully loaded chat data from {file}")
+                            
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Invalid JSON in file {file}: {str(e)}")
+                        continue
                     except Exception as e:
                         logger.error(f"Error processing file {file}: {str(e)}")
                         continue
             
             return True, chat_histories
-        
+            
         except Exception as e:
             logger.error(f"Error getting chat history: {str(e)}")
-            return False, f"Error getting chat history: {str(e)}"
+            return False, str(e)
 
     def upload_document(self, file_path: str, document_id: Optional[str] = None) -> Tuple[bool, str]:
         """
