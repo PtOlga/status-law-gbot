@@ -15,8 +15,16 @@ def get_embeddings():
         model_kwargs={'device': 'cpu'}
     )
 
-def create_vector_store():
-    """Create vector store and upload to dataset"""
+def create_vector_store(mode: str = "rebuild"):
+    """
+    Create or update vector store and upload to dataset
+    
+    Args:
+        mode: Either "rebuild" (create from scratch) or "update" (add new documents)
+    
+    Returns:
+        (success, message)
+    """
     # Load documents
     documents = load_documents()
     
@@ -33,32 +41,55 @@ def create_vector_store():
     # Initialize embeddings
     embeddings = get_embeddings()
     
-    # Create vector store in temporary directory
-    with tempfile.TemporaryDirectory() as temp_dir:
-        vector_store = FAISS.from_documents(chunks, embeddings)
-        # Save to temporary directory
-        vector_store.save_local(folder_path=temp_dir)
+    try:
+        if mode == "update":
+            # Try to load existing vector store
+            from src.knowledge_base.dataset import DatasetManager
+            dataset = DatasetManager(token=HF_TOKEN)
+            success, result = dataset.download_vector_store()
+            
+            if success:
+                # Add new documents to existing store
+                vector_store = FAISS.load_local(
+                    VECTOR_STORE_PATH,
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                vector_store.add_documents(chunks)
+            else:
+                return False, "Failed to load existing vector store for update"
+        else:
+            # Create new vector store
+            vector_store = FAISS.from_documents(chunks, embeddings)
         
-        # Copy files to VECTOR_STORE_PATH for subsequent loading
-        os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
-        for file in ["index.faiss", "index.pkl"]:
-            shutil.copy2(
-                os.path.join(temp_dir, file),
-                os.path.join(VECTOR_STORE_PATH, file)
-            )
+        # Save and upload
+        with tempfile.TemporaryDirectory() as temp_dir:
+            vector_store.save_local(folder_path=temp_dir)
+            
+            # Copy files to VECTOR_STORE_PATH for subsequent loading
+            os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
+            for file in ["index.faiss", "index.pkl"]:
+                shutil.copy2(
+                    os.path.join(temp_dir, file),
+                    os.path.join(VECTOR_STORE_PATH, file)
+                )
+            
+            # Upload to dataset
+            from src.knowledge_base.dataset import DatasetManager
+            dataset = DatasetManager(token=HF_TOKEN)
+            success, message = dataset.upload_vector_store()
+            
+            # Clean up local files
+            shutil.rmtree(VECTOR_STORE_PATH)
+            
+            if not success:
+                return False, f"Error uploading to dataset: {message}"
         
-        # Upload to dataset with explicit token passing
-        from src.knowledge_base.dataset import DatasetManager
-        dataset = DatasetManager(token=HF_TOKEN)
-        success, message = dataset.upload_vector_store()
+        action = "updated" if mode == "update" else "created"
+        return True, f"Knowledge base {action} successfully! Processed {len(documents)} documents, {len(chunks)} chunks."
         
-        # Clean up local files after upload
-        shutil.rmtree(VECTOR_STORE_PATH)
-        
-        if not success:
-            return False, f"Error uploading to dataset: {message}"
-    
-    return True, f"Knowledge base created successfully! Loaded {len(documents)} documents, created {len(chunks)} chunks."
+    except Exception as e:
+        return False, f"Error {mode}ing knowledge base: {str(e)}"
 
 def load_vector_store():
     """Load vector store"""

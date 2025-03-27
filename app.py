@@ -185,10 +185,18 @@ def respond(
         
         yield new_history, conversation_id
 
-def build_kb():
-    """Function to create knowledge base"""
+def update_kb():
+    """Function to update existing knowledge base with new documents"""
     try:
-        success, message = create_vector_store()
+        success, message = create_vector_store(mode="update")
+        return message
+    except Exception as e:
+        return f"Error updating knowledge base: {str(e)}"
+
+def rebuild_kb():
+    """Function to create knowledge base from scratch"""
+    try:
+        success, message = create_vector_store(mode="rebuild")
         return message
     except Exception as e:
         return f"Error creating knowledge base: {str(e)}"
@@ -271,7 +279,8 @@ with gr.Blocks() as demo:
                 
                 with gr.Column(scale=1):
                     gr.Markdown("### Knowledge Base Management")
-                    build_kb_btn = gr.Button("Create/Update Knowledge Base", variant="primary")
+                    update_kb_btn = gr.Button("Update Knowledge Base", variant="secondary")
+                    rebuild_kb_btn = gr.Button("Rebuild Knowledge Base", variant="primary")
                     kb_status = gr.Textbox(label="Knowledge Base Status", interactive=False)
 
             submit_btn.click(
@@ -279,7 +288,8 @@ with gr.Blocks() as demo:
                 [msg, chatbot, conversation_id],
                 [chatbot, conversation_id, msg]
             )
-            build_kb_btn.click(build_kb, None, kb_status)
+            update_kb_btn.click(update_kb, None, kb_status)
+            rebuild_kb_btn.click(rebuild_kb, None, kb_status)
             clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
 
         with gr.Tab("Model Settings"):
