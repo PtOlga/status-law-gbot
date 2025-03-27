@@ -129,7 +129,6 @@ def respond(
             temperature=temperature,
             top_p=top_p,
         ):
-            # Check for finish_reason in chunk
             if hasattr(chunk.choices[0], 'finish_reason') and chunk.choices[0].finish_reason is not None:
                 is_complete = True
                 break
@@ -138,14 +137,9 @@ def respond(
             if token:
                 response += token
                 # Format response in the way Gradio chatbot expects for type="messages"
-                # For messages format, each message must be a dict with 'role' and 'content'
                 new_history = []
-                
-                # Copy existing history in the correct format
                 if history:
-                    for item in history:
-                        if isinstance(item, list) and len(item) == 2:
-                            new_history.append(item)
+                    new_history.extend(history)
                 
                 # Add the new message pair
                 new_history.append([
@@ -217,24 +211,38 @@ def respond_and_clear(message, history, conversation_id):
         top_p=top_p
     )
     
-    # Return first yielded response directly
-    # The respond function now yields data in the expected format
     try:
         new_history, conv_id = next(response_generator)
-        return new_history, conv_id, ""  # Clear message input
+        # Ensure each message in history is in correct format for Gradio messages type
+        formatted_history = []
+        for msg_pair in new_history:
+            if isinstance(msg_pair, list) and len(msg_pair) == 2:
+                # Format user message
+                if isinstance(msg_pair[0], str):
+                    user_msg = {"content": msg_pair[0], "role": "user"}
+                elif isinstance(msg_pair[0], dict) and "content" in msg_pair[0]:
+                    user_msg = msg_pair[0]
+                else:
+                    user_msg = {"content": str(msg_pair[0]), "role": "user"}
+
+                # Format assistant message
+                if isinstance(msg_pair[1], str):
+                    assistant_msg = {"content": msg_pair[1], "role": "assistant"}
+                elif isinstance(msg_pair[1], dict) and "content" in msg_pair[1]:
+                    assistant_msg = msg_pair[1]
+                else:
+                    assistant_msg = {"content": str(msg_pair[1]), "role": "assistant"}
+
+                formatted_history.append([user_msg, assistant_msg])
+        
+        return formatted_history, conv_id, ""  # Clear message input
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
-        # Return a minimal valid format if there's an error
+        error_msg = {"role": "assistant", "content": f"An error occurred: {str(e)}"}
         if history:
-            return history + [[
-                {"role": "user", "content": message}, 
-                {"role": "assistant", "content": f"An error occurred: {str(e)}"}
-            ]], conversation_id, ""
+            return history + [[{"role": "user", "content": message}, error_msg]], conversation_id, ""
         else:
-            return [[
-                {"role": "user", "content": message}, 
-                {"role": "assistant", "content": f"An error occurred: {str(e)}"}
-            ]], conversation_id, ""
+            return [[{"role": "user", "content": message}, error_msg]], conversation_id, ""
 
 # Create interface
 with gr.Blocks() as demo:
