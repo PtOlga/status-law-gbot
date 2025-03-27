@@ -811,6 +811,25 @@ with gr.Blocks() as demo:
             
             with gr.Row():
                 with gr.Column():
+                    gr.Markdown("""
+                    ### Training Parameters Guide
+                    
+                    **Number of Epochs**
+                    - What it means: How many times the model will see all training data
+                    - Higher = More learning but takes longer
+                    - Recommended: 3 for small datasets, 1 for large datasets
+                    
+                    **Batch Size**
+                    - What it means: How many examples processed at once
+                    - Higher = Faster training but needs more memory
+                    - Recommended: 4 for 16GB RAM, 8 for 32GB RAM
+                    
+                    **Learning Rate**
+                    - What it means: How quickly the model learns
+                    - Higher = Faster learning but may be less stable
+                    - Recommended: 2e-4 (0.0002) for most cases
+                    """)
+                    
                     epochs = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of Epochs")
                     batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
                     learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
