@@ -95,6 +95,14 @@ class DatasetManager:
                 index_path = os.path.join(temp_dir, "index.faiss")
                 config_path = os.path.join(temp_dir, "index.pkl")
                 
+                # Add debug logging
+                print(f"Debug - Checking files before upload:")
+                print(f"index.faiss exists: {os.path.exists(index_path)}, size: {os.path.getsize(index_path) if os.path.exists(index_path) else 0} bytes")
+                print(f"index.pkl exists: {os.path.exists(config_path)}, size: {os.path.getsize(config_path) if os.path.exists(config_path) else 0} bytes")
+                
+                if not os.path.exists(index_path) or not os.path.exists(config_path):
+                    return False, "Vector store files not created"
+                
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
                 
                 # First save old files to archive if they exist
