@@ -104,23 +104,14 @@ def respond(
         try:
             for item in history:
                 # Check if we have a pair of messages as expected
-                if isinstance(item, list) and len(item) == 2:
+                if len(item) == 2:
                     user_msg, assistant_msg = item
                     
-                    # Handle different formats of user_msg and assistant_msg
-                    if isinstance(user_msg, dict) and "content" in user_msg:
-                        messages.append({"role": "user", "content": user_msg["content"]})
-                    elif isinstance(user_msg, str):
-                        messages.append({"role": "user", "content": user_msg})
-                    else:
-                        messages.append({"role": "user", "content": str(user_msg)})
+                    # Add user message
+                    messages.append({"role": "user", "content": user_msg})
                     
-                    if isinstance(assistant_msg, dict) and "content" in assistant_msg:
-                        messages.append({"role": "assistant", "content": assistant_msg["content"]})
-                    elif isinstance(assistant_msg, str):
-                        messages.append({"role": "assistant", "content": assistant_msg})
-                    else:
-                        messages.append({"role": "assistant", "content": str(assistant_msg)})
+                    # Add assistant message
+                    messages.append({"role": "assistant", "content": assistant_msg})
         except Exception as e:
             print(f"Error processing history: {str(e)}")
             # Continue with empty history if there was an error
@@ -152,38 +143,17 @@ def respond(
                 response += token
                 # Create proper history format for Gradio
                 current_history = history.copy() if history else []
-                current_history.append({
-                    "role": "user",
-                    "content": message
-                })
-                current_history.append({
-                    "role": "assistant",
-                    "content": response
-                })
+                current_history.append((message, response))
                 yield current_history, conversation_id
 
         if is_complete or response:
             final_history = history.copy() if history else []
-            final_history.append({
-                "role": "user",
-                "content": message
-            })
-            final_history.append({
-                "role": "assistant",
-                "content": response
-            })
+            final_history.append((message, response))
             yield final_history, conversation_id
             
     except Exception as e:
         error_history = history.copy() if history else []
-        error_history.append({
-            "role": "user",
-            "content": message
-        })
-        error_history.append({
-            "role": "assistant",
-            "content": f"An error occurred: {str(e)}"
-        })
+        error_history.append((message, f"An error occurred: {str(e)}"))
         yield error_history, conversation_id
 
 
@@ -229,25 +199,11 @@ def respond_and_clear(message, history, conversation_id):
         # Get first response from generator
         new_history, conv_id = next(response_generator)
         
-        # Format history as list of message pairs
-        formatted_history = []
-        for i in range(0, len(new_history), 2):
-            if i + 1 < len(new_history):
-                formatted_history.append([
-                    new_history[i],
-                    new_history[i + 1]
-                ])
-        
-        print("Debug - Final formatted history:", formatted_history)
-        return formatted_history, conv_id, ""  # Clear message input
+        return new_history, conv_id, ""  # Clear message input
         
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
-        error_pair = [
-            {"role": "user", "content": message},
-            {"role": "assistant", "content": f"An error occurred: {str(e)}"}
-        ]
-        return [error_pair], conversation_id, ""
+        return history + [(message, f"An error occurred: {str(e)}")], conversation_id, ""
 
 # Create interface
 with gr.Blocks() as demo:
@@ -261,7 +217,6 @@ with gr.Blocks() as demo:
                 with gr.Column(scale=3):
                     chatbot = gr.Chatbot(
                         label="Chat",
-                        type="messages",  # Use new messages format
                         avatar_images=["user.png", "assistant.png"]
                     )
                     
