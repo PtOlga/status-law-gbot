@@ -60,24 +60,14 @@ def load_vector_store():
         print(f"Debug - Download result: success={success}, result_type={type(result)}")
         
         if success:
-            if result is None:
-                print("Debug - Vector store is None despite success=True")
-                return None
-                
             if isinstance(result, str):
-                print(f"Debug - Vector store is a string: {result}")
+                print(f"Debug - Error message received: {result}")
                 return None
-                
-            # Check if the result has a similarity_search method
-            if hasattr(result, 'similarity_search'):
-                print("Debug - Vector store loaded successfully with similarity_search method")
-                return result
-            else:
-                print(f"Debug - Vector store object does not have similarity_search method: {type(result)}")
-                return None
+            return result
         else:
             print(f"Debug - Failed to load vector store: {result}")
             return None
+            
     except Exception as e:
         import traceback
         print(f"Exception loading knowledge base: {str(e)}")

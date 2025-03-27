@@ -9,7 +9,8 @@ from typing import Tuple, List, Dict, Any, Optional, Union
 from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
-from config.settings import VECTOR_STORE_PATH, HF_TOKEN
+from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL
+from langchain.embeddings import HuggingFaceEmbeddings
 
 class DatasetManager:
     def __init__(self, dataset_name="Rulga/status-law-knowledge-base", token: Optional[str] = None):
@@ -188,7 +189,17 @@ class DatasetManager:
         try:
             # Check if local files exist and force is False
             if not force and os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
-                return True, "Local files exist"
+                # Instead of returning string, load and return the vector store
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=EMBEDDING_MODEL,
+                    model_kwargs={'device': 'cpu'}
+                )
+                vector_store = FAISS.load_local(
+                    VECTOR_STORE_PATH,
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                return True, vector_store
             
             # Ensure vector store directory exists
             os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
@@ -209,10 +220,20 @@ class DatasetManager:
                     local_dir=VECTOR_STORE_PATH
                 )
                 
-                return True, "Vector store downloaded successfully"
-            
-            except Exception as download_error:
-                return False, f"Failed to download vector store: {str(download_error)}"
+                # After successful download, load and return the vector store
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=EMBEDDING_MODEL,
+                    model_kwargs={'device': 'cpu'}
+                )
+                vector_store = FAISS.load_local(
+                    VECTOR_STORE_PATH,
+                    embeddings,
+                    allow_dangerous_deserialization=True
+                )
+                return True, vector_store
+                
+            except Exception as e:
+                return False, f"Failed to download vector store: {str(e)}"
             
         except Exception as e:
             return False, f"Error in download_vector_store: {str(e)}"
