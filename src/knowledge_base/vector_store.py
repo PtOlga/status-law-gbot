@@ -16,20 +16,14 @@ def get_embeddings():
     )
 
 def create_vector_store(mode: str = "rebuild"):
-    """
-    Create or update vector store and upload to dataset
-    
-    Args:
-        mode: Either "rebuild" (create from scratch) or "update" (add new documents)
-    
-    Returns:
-        (success, message)
-    """
+    """Create or update vector store and upload to dataset"""
     # Load documents
     documents = load_documents()
     
     if not documents:
         return False, "Error: documents not loaded"
+    
+    print(f"Loaded {len(documents)} documents")
     
     # Split into chunks
     text_splitter = RecursiveCharacterTextSplitter(
@@ -37,31 +31,33 @@ def create_vector_store(mode: str = "rebuild"):
         chunk_overlap=CHUNK_OVERLAP
     )
     chunks = text_splitter.split_documents(documents)
+    print(f"Created {len(chunks)} chunks")
     
     # Initialize embeddings
     embeddings = get_embeddings()
     
     try:
-        if mode == "update":
-            # Try to load existing vector store
+        # Always create new vector store in rebuild mode
+        if mode == "rebuild":
+            print("Creating new vector store...")
+            vector_store = FAISS.from_documents(chunks, embeddings)
+        else:
+            # Try to load and update existing store
             from src.knowledge_base.dataset import DatasetManager
             dataset = DatasetManager(token=HF_TOKEN)
             success, result = dataset.download_vector_store()
             
             if success:
-                # Add new documents to existing store
+                print("Updating existing vector store...")
                 vector_store = result
                 vector_store.add_documents(chunks)
             else:
                 return False, "Failed to load existing vector store for update"
-        else:
-            # Create new vector store
-            vector_store = FAISS.from_documents(chunks, embeddings)
         
-        # Upload to dataset
+        # Upload to dataset with force flag
         from src.knowledge_base.dataset import DatasetManager
         dataset = DatasetManager(token=HF_TOKEN)
-        success, message = dataset.upload_vector_store(vector_store)
+        success, message = dataset.upload_vector_store(vector_store, force_update=True)
         
         if not success:
             return False, f"Error uploading to dataset: {message}"
