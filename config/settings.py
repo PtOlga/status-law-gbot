@@ -29,7 +29,7 @@ MODELS = {
             "repetition_penalty": 1.1,
         },
         "training": {
-            "base_model_path": os.path.join(MODEL_PATH, "zephyr-7b-beta"),
+            "base_model_path": "HuggingFaceH4/zephyr-7b-beta",  # Используем прямой путь к модели
             "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "zephyr-7b-beta-tuned"),
             "lora_config": {
                 "r": 16,

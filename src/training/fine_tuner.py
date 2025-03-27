@@ -84,30 +84,34 @@ class FineTuner:
         try:
             logger.info(f"Загрузка модели {self.base_model_id}...")
             
-            # Загрузка токенизатора
+            # Загрузка токенизатора с использованием slow tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.base_model_id,
-                trust_remote_code=True
+                trust_remote_code=True,
+                use_fast=False  # Используем slow tokenizer
             )
             
             # Специальные токены для диалогов
             special_tokens = {
                 "pad_token": "<PAD>",
                 "eos_token": "</s>",
-                "bos_token": "<s>"
+                "bos_token": "<s>",
+                "unk_token": "<unk>"  # Добавляем unknown token
             }
             
             # Добавляем специальные токены, если их нет
-            for token_name, token_value in special_tokens.items():
-                if getattr(self.tokenizer, token_name) is None:
-                    setattr(self.tokenizer, token_name, token_value)
+            self.tokenizer.add_special_tokens({"additional_special_tokens": list(special_tokens.values())})
             
             # Загрузка модели
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.base_model_id,
                 trust_remote_code=True,
-                device_map="auto" if self.device == "cuda" else None
+                device_map="auto" if self.device == "cuda" else None,
+                torch_dtype="auto"  # Автоматически выбираем оптимальный тип данных
             )
+            
+            # Изменяем размер эмбеддингов для новых токенов
+            self.model.resize_token_embeddings(len(self.tokenizer))
             
             logger.info("Модель и токенизатор успешно загружены")
         except Exception as e:
