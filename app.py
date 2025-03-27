@@ -266,7 +266,7 @@ with gr.Blocks() as demo:
                 with gr.Column(scale=3):
                     chatbot = gr.Chatbot(
                         label="Chat",
-                        avatar_images=["user.png", "assistant.png"]
+                        avatar_images=None
                     )
                     
                     with gr.Row():
