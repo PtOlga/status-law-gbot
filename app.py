@@ -26,16 +26,111 @@ from web.training_interface import (
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
-# Initialize HF client with token
-client = InferenceClient(
-    ACTIVE_MODEL["id"],
-    token=HF_TOKEN
-)
+# Extended model information
+MODEL_DETAILS = {
+    "llama-7b": {
+        "full_name": "Meta Llama 2 7B Chat",
+        "capabilities": [
+            "Multilingual (supports Russian, English and other languages)",
+            "Good performance on legal texts",
+            "Free model with open license",
+            "Easy to run on computers with 16GB+ RAM"
+        ],
+        "limitations": [
+            "Limited knowledge of specific legal terminology",
+            "May give incorrect answers to complex legal questions",
+            "Knowledge limited by training data"
+        ],
+        "use_cases": [
+            "Legal document analysis",
+            "Answering general legal questions",
+            "Legal knowledge base search",
+            "Document drafting assistance"
+        ],
+        "documentation": "https://huggingface.co/meta-llama/Llama-2-7b-chat-hf"
+    },
+    "zephyr-7b": {
+        "full_name": "HuggingFaceH4 Zephyr 7B Beta",
+        "capabilities": [
+            "High performance on instruction tasks",
+            "Good response accuracy",
+            "Advanced reasoning",
+            "Excellent text generation quality"
+        ],
+        "limitations": [
+            "May require API payment for usage",
+            "Limited support for languages other than English",
+            "Less optimization for legal topics than specialized models"
+        ],
+        "use_cases": [
+            "Complex legal reasoning",
+            "Case law analysis",
+            "Legislative research",
+            "Structured legal text generation"
+        ],
+        "documentation": "https://huggingface.co/HuggingFaceH4/zephyr-7b-beta"
+    }
+}
 
-# State for storing context and chat history
+# Путь к файлу с пользовательскими настройками
+USER_PREFERENCES_PATH = os.path.join(os.path.dirname(__file__), "user_preferences.json")
+
+# Глобальные переменные
+client = None
 context_store = {}
 
 print(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
+
+def load_user_preferences():
+    """Load user preferences from file"""
+    try:
+        if os.path.exists(USER_PREFERENCES_PATH):
+            with open(USER_PREFERENCES_PATH, 'r') as f:
+                return json.load(f)
+        return {
+            "selected_model": DEFAULT_MODEL,
+            "parameters": {}
+        }
+    except Exception as e:
+        print(f"Error loading user preferences: {str(e)}")
+        return {
+            "selected_model": DEFAULT_MODEL,
+            "parameters": {}
+        }
+
+def save_user_preferences(model_key, parameters=None):
+    """Save user preferences to file"""
+    try:
+        preferences = load_user_preferences()
+        preferences["selected_model"] = model_key
+        
+        # Update parameters if provided
+        if parameters:
+            if model_key not in preferences["parameters"]:
+                preferences["parameters"][model_key] = {}
+            
+            preferences["parameters"][model_key] = parameters
+        
+        with open(USER_PREFERENCES_PATH, 'w') as f:
+            json.dump(preferences, f, indent=2)
+        
+        print(f"User preferences saved successfully!")
+        return True
+    except Exception as e:
+        print(f"Error saving user preferences: {str(e)}")
+        return False
+
+def initialize_client(model_id=None):
+    """Initialize or reinitialize the client with the specified model"""
+    global client
+    if model_id is None:
+        model_id = ACTIVE_MODEL["id"]
+    
+    client = InferenceClient(
+        model_id,
+        token=HF_TOKEN
+    )
+    return client
 
 def get_context(message, conversation_id):
     """Get context from knowledge base"""
@@ -220,7 +315,7 @@ def save_chat_history(history, conversation_id):
 def respond_and_clear(message, history, conversation_id):
     """Handle chat message and clear input"""
     # Get model parameters from config
-    max_tokens = ACTIVE_MODEL['parameters']['max_length']  # используем ACTIVE_MODEL вместо MODEL_CONFIG
+    max_tokens = ACTIVE_MODEL['parameters']['max_length']
     temperature = ACTIVE_MODEL['parameters']['temperature']
     top_p = ACTIVE_MODEL['parameters']['top_p']
     
@@ -261,7 +356,6 @@ def respond_and_clear(message, history, conversation_id):
             
         return error_history, conversation_id, ""
 
-# Функции для обновления информации о модели
 def update_model_info(model_key):
     """Update model information display"""
     model = MODELS[model_key]
@@ -275,9 +369,40 @@ def update_model_info(model_key):
     **Type:** {model['type']}
     """
 
-# Функция для смены модели
+def get_model_details_html(model_key):
+    """Get detailed HTML for model information panel"""
+    if model_key not in MODEL_DETAILS:
+        return "<p>Информация о модели недоступна</p>"
+    
+    details = MODEL_DETAILS[model_key]
+    
+    html = f"""
+    <div style="padding: 15px; border: 1px solid #ccc; border-radius: 5px; margin-top: 10px;">
+        <h3>{details['full_name']}</h3>
+        
+        <h4>Возможности:</h4>
+        <ul>
+            {"".join([f"<li>{cap}</li>" for cap in details['capabilities']])}
+        </ul>
+        
+        <h4>Ограничения:</h4>
+        <ul>
+            {"".join([f"<li>{lim}</li>" for lim in details['limitations']])}
+        </ul>
+        
+        <h4>Рекомендуемое использование:</h4>
+        <ul>
+            {"".join([f"<li>{use}</li>" for use in details['use_cases']])}
+        </ul>
+        
+        <p><a href="{details['documentation']}" target="_blank">Документация модели</a></p>
+    </div>
+    """
+    
+    return html
+
 def change_model(model_key):
-    """Change active model"""
+    """Change active model and update parameters"""
     global client, ACTIVE_MODEL
     
     try:
@@ -290,9 +415,79 @@ def change_model(model_key):
             token=HF_TOKEN
         )
         
-        return update_model_info(model_key)
+        # Сохраняем выбранную модель в предпочтениях
+        save_user_preferences(model_key)
+        
+        # Return both model info and updated parameters
+        return (
+            update_model_info(model_key),
+            ACTIVE_MODEL['parameters']['max_length'],
+            ACTIVE_MODEL['parameters']['temperature'],
+            ACTIVE_MODEL['parameters']['top_p'],
+            ACTIVE_MODEL['parameters']['repetition_penalty'],
+            f"Model changed to {ACTIVE_MODEL['name']}"
+        )
     except Exception as e:
-        return f"Error changing model: {str(e)}"
+        return (
+            f"Error changing model: {str(e)}", 
+            2048, 0.7, 0.9, 1.1,
+            f"Error: {str(e)}"
+        )
+
+def save_parameters(model_key, max_len, temp, top_p_val, rep_pen):
+    """Save user-defined parameters to active model"""
+    global ACTIVE_MODEL
+    
+    try:
+        # Update parameters
+        ACTIVE_MODEL['parameters']['max_length'] = max_len
+        ACTIVE_MODEL['parameters']['temperature'] = temp
+        ACTIVE_MODEL['parameters']['top_p'] = top_p_val
+        ACTIVE_MODEL['parameters']['repetition_penalty'] = rep_pen
+        
+        # Сохраняем параметры в предпочтениях
+        params = {
+            'max_length': max_len,
+            'temperature': temp,
+            'top_p': top_p_val,
+            'repetition_penalty': rep_pen
+        }
+        save_user_preferences(model_key, params)
+        
+        return "Parameters saved successfully!"
+    except Exception as e:
+        return f"Error saving parameters: {str(e)}"
+
+def initialize_app():
+    """Initialize app with user preferences"""
+    global client, ACTIVE_MODEL
+    
+    preferences = load_user_preferences()
+    selected_model = preferences.get("selected_model", DEFAULT_MODEL)
+    
+    # Убедиться, что выбранная модель существует
+    if selected_model not in MODELS:
+        selected_model = DEFAULT_MODEL
+    
+    # Установить активную модель
+    ACTIVE_MODEL = MODELS[selected_model]
+    
+    # Загрузить сохраненные параметры, если они есть
+    saved_params = preferences.get("parameters", {}).get(selected_model)
+    if saved_params:
+        ACTIVE_MODEL['parameters'].update(saved_params)
+    
+    # Инициализировать клиент
+    client = InferenceClient(
+        ACTIVE_MODEL["id"],
+        token=HF_TOKEN
+    )
+    
+    print(f"App initialized with model: {ACTIVE_MODEL['name']}")
+    return selected_model
+
+# Initialize HF client with token at startup
+selected_model = initialize_app()
 
 # Create interface
 with gr.Blocks() as demo:
@@ -357,15 +552,23 @@ with gr.Blocks() as demo:
                     # Add model selector
                     model_selector = gr.Dropdown(
                         choices=list(MODELS.keys()),
-                        value=DEFAULT_MODEL,
+                        value=selected_model,  # Use loaded model from preferences
                         label="Select Model",
                         interactive=True
                     )
                     
                     # Current model info display
-                    model_info = gr.Markdown(value=update_model_info(DEFAULT_MODEL))
+                    model_info = gr.Markdown(value=update_model_info(selected_model))
                     
-                    # Model Parameters
+                    # Status indicator for model loading
+                    model_loading = gr.Textbox(
+                        label="Status",
+                        placeholder="Model ready",
+                        interactive=False,
+                        value="Model ready"
+                    )
+                    
+                    # Model Parameters - make them interactive
                     with gr.Row():
                         max_length = gr.Slider(
                             minimum=1,
@@ -373,7 +576,7 @@ with gr.Blocks() as demo:
                             value=ACTIVE_MODEL['parameters']['max_length'],
                             step=1,
                             label="Maximum Length",
-                            interactive=False
+                            interactive=True
                         )
                         temperature = gr.Slider(
                             minimum=0.1,
@@ -381,7 +584,7 @@ with gr.Blocks() as demo:
                             value=ACTIVE_MODEL['parameters']['temperature'],
                             step=0.1,
                             label="Temperature",
-                            interactive=False
+                            interactive=True
                         )
                     with gr.Row():
                         top_p = gr.Slider(
@@ -390,7 +593,7 @@ with gr.Blocks() as demo:
                             value=ACTIVE_MODEL['parameters']['top_p'],
                             step=0.1,
                             label="Top-p",
-                            interactive=False
+                            interactive=True
                         )
                         rep_penalty = gr.Slider(
                             minimum=1.0,
@@ -398,8 +601,11 @@ with gr.Blocks() as demo:
                             value=ACTIVE_MODEL['parameters']['repetition_penalty'],
                             step=0.1,
                             label="Repetition Penalty",
-                            interactive=False
+                            interactive=True
                         )
+                    
+                    # Save parameters button
+                    save_params_btn = gr.Button("Save Parameters", variant="primary")
 
                     gr.Markdown("""
                     <small>
@@ -412,6 +618,9 @@ with gr.Blocks() as demo:
                     """)
                 
                 with gr.Column(scale=1):
+                    # Model details panel
+                    model_details = gr.HTML(get_model_details_html(selected_model))
+                    
                     gr.Markdown("### Training Configuration")
                     gr.Markdown(f"""
                     **Base Model Path:** 
@@ -456,11 +665,25 @@ with gr.Blocks() as demo:
                 outputs=[analysis_output]
             )
     
-    # ПЕРЕМЕЩЕНО ВНУТРЬ БЛОКА: Добавляем обработчик события изменения модели
+    # Model change handler
     model_selector.change(
         fn=change_model,
         inputs=[model_selector],
-        outputs=[model_info]
+        outputs=[model_info, max_length, temperature, top_p, rep_penalty, model_loading]
+    )
+    
+    # Update model details panel when model changes
+    model_selector.change(
+        fn=get_model_details_html,
+        inputs=[model_selector],
+        outputs=[model_details]
+    )
+    
+    # Parameters save handler
+    save_params_btn.click(
+        fn=save_parameters,
+        inputs=[model_selector, max_length, temperature, top_p, rep_penalty],
+        outputs=[model_loading]
     )
 
 # Launch application
