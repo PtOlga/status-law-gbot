@@ -127,31 +127,25 @@ def respond(
     is_complete = False
     
     try:
-        for chunk in client.chat_completion(
+        # Non-streaming version for debugging
+        full_response = client.chat_completion(
             messages,
             max_tokens=max_tokens,
-            stream=True,
+            stream=False,
             temperature=temperature,
             top_p=top_p,
-        ):
-            if hasattr(chunk.choices[0], 'finish_reason') and chunk.choices[0].finish_reason is not None:
-                is_complete = True
-                break
-                
-            token = chunk.choices[0].delta.content
-            if token:
-                response += token
-                # Create proper history format for Gradio
-                current_history = history.copy() if history else []
-                current_history.append((message, response))
-                yield current_history, conversation_id
-
-        if is_complete or response:
-            final_history = history.copy() if history else []
-            final_history.append((message, response))
-            yield final_history, conversation_id
+        )
+        
+        response = full_response.choices[0].message.content
+        print(f"Debug - Full response from API: {response}")
+        
+        # Return complete response immediately
+        final_history = history.copy() if history else []
+        final_history.append((message, response))
+        yield final_history, conversation_id
             
     except Exception as e:
+        print(f"Debug - Error during API call: {str(e)}")
         error_history = history.copy() if history else []
         error_history.append((message, f"An error occurred: {str(e)}"))
         yield error_history, conversation_id
@@ -198,6 +192,9 @@ def respond_and_clear(message, history, conversation_id):
         
         # Get first response from generator
         new_history, conv_id = next(response_generator)
+        
+        # Debug the response
+        print("Debug - Final history:", new_history)
         
         return new_history, conv_id, ""  # Clear message input
         
