@@ -210,9 +210,12 @@ class ChatAnalyzer:
             List of chat histories
         """
         success, chat_data = self.dataset_manager.get_chat_history()
-        if not success or not chat_data:
-            return []
-        return chat_data
+        # Добавим логирование для отладки
+        if not success:
+            logger.error(f"Failed to get chat history: {chat_data}")  # chat_data содержит сообщение об ошибке
+        if not chat_data:
+            logger.warning("Chat data is empty")
+        return chat_data if success and chat_data else []
 
 
 

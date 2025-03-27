@@ -11,6 +11,11 @@ from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
 from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL
 from langchain_community.embeddings import HuggingFaceEmbeddings  # Updated import
+import logging
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class DatasetManager:
     def __init__(self, dataset_name="Rulga/status-law-knowledge-base", token: Optional[str] = None):
@@ -320,47 +325,57 @@ class DatasetManager:
             (success, chat history or error message)
         """
         try:
-            # Get list of files in chat_history directory
+            # Добавим логирование
+            logger.info(f"Attempting to get chat history from dataset {self.dataset_name}")
+            
             files = self.api.list_repo_files(
                 repo_id=self.dataset_name,
                 repo_type="dataset",
                 path="chat_history"
             )
             
+            logger.info(f"Found {len(files)} files in chat_history")
+            
             # Filter files by conversation_id if specified
             if conversation_id:
                 files = [f for f in files if f.startswith(f"chat_history/{conversation_id}_")]
+                logger.info(f"Filtered to {len(files)} files for conversation {conversation_id}")
             
             # If no files found, return empty list
             if not files or all(f.endswith(".gitkeep") for f in files):
+                logger.warning("No chat history files found")
                 return True, []
             
-            # Create temporary directory for downloading files
-            with tempfile.TemporaryDirectory() as temp_dir:
-                chat_histories = []
+            chat_histories = []
+            for file in files:
+                if file.endswith(".gitkeep"):
+                    continue
                 
-                for file in files:
-                    if file.endswith(".gitkeep"):
-                        continue
-                        
-                    # Download file
+                try:
+                    # Download and read file
                     local_file = self.api.hf_hub_download(
                         repo_id=self.dataset_name,
                         filename=file,
                         repo_type="dataset",
-                        local_dir=temp_dir
+                        local_dir=self.temp_dir
                     )
                     
-                    # Read file content
                     with open(local_file, "r", encoding="utf-8") as f:
                         chat_data = json.load(f)
+                        # Проверка структуры данных
+                        if not isinstance(chat_data, dict) or "messages" not in chat_data:
+                            logger.error(f"Invalid chat data structure in {file}")
+                            continue
                         chat_histories.append(chat_data)
-                
-                # Sort by timestamp
-                chat_histories.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-                
-                return True, chat_histories
+                    
+                except Exception as e:
+                    logger.error(f"Error processing file {file}: {str(e)}")
+                    continue
+            
+            return True, chat_histories
+        
         except Exception as e:
+            logger.error(f"Error getting chat history: {str(e)}")
             return False, f"Error getting chat history: {str(e)}"
 
     def upload_document(self, file_path: str, document_id: Optional[str] = None) -> Tuple[bool, str]:
