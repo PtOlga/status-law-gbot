@@ -52,21 +52,36 @@ def load_vector_store():
     """Load knowledge base from dataset"""
     try:
         from src.knowledge_base.dataset import DatasetManager
+        
+        print("Debug - Attempting to load vector store...")
         dataset = DatasetManager()
         success, result = dataset.download_vector_store()
         
-        if success and result is not None and not isinstance(result, str):
-            return result
+        print(f"Debug - Download result: success={success}, result_type={type(result)}")
         
-        # If result is a string, it's an error message
-        if isinstance(result, str):
-            print(f"Error loading knowledge base: {result}")
+        if success:
+            if result is None:
+                print("Debug - Vector store is None despite success=True")
+                return None
+                
+            if isinstance(result, str):
+                print(f"Debug - Vector store is a string: {result}")
+                return None
+                
+            # Check if the result has a similarity_search method
+            if hasattr(result, 'similarity_search'):
+                print("Debug - Vector store loaded successfully with similarity_search method")
+                return result
+            else:
+                print(f"Debug - Vector store object does not have similarity_search method: {type(result)}")
+                return None
         else:
-            print("Knowledge base is None or invalid format")
-        
-        return None
+            print(f"Debug - Failed to load vector store: {result}")
+            return None
     except Exception as e:
+        import traceback
         print(f"Exception loading knowledge base: {str(e)}")
+        print(traceback.format_exc())
         return None
 
 def respond(
@@ -91,8 +106,10 @@ def respond(
     if context:
         messages[0]["content"] += f"\n\nContext for response:\n{context}"
     
+    # Debug: print the history format
+    print("Debug - Processing history format:", history)
+    
     # Convert history to OpenAI format for API call
-    # Handle different possible history formats more carefully
     if history:
         try:
             for item in history:
@@ -105,17 +122,24 @@ def respond(
                         messages.append({"role": "user", "content": user_msg["content"]})
                     elif isinstance(user_msg, str):
                         messages.append({"role": "user", "content": user_msg})
+                    else:
+                        messages.append({"role": "user", "content": str(user_msg)})
                     
                     if isinstance(assistant_msg, dict) and "content" in assistant_msg:
                         messages.append({"role": "assistant", "content": assistant_msg["content"]})
                     elif isinstance(assistant_msg, str):
                         messages.append({"role": "assistant", "content": assistant_msg})
+                    else:
+                        messages.append({"role": "assistant", "content": str(assistant_msg)})
         except Exception as e:
             print(f"Error processing history: {str(e)}")
             # Continue with empty history if there was an error
     
     # Add current user message
     messages.append({"role": "user", "content": message})
+    
+    # Debug: print API messages
+    print("Debug - API messages:", messages)
     
     # Send API request and stream response
     response = ""
@@ -136,18 +160,33 @@ def respond(
             token = chunk.choices[0].delta.content
             if token:
                 response += token
-                # Format response in the way Gradio chatbot expects for type="messages"
-                new_history = []
+                
+                # Create a properly formatted history for Gradio
+                formatted_history = []
+                
+                # Include existing history (ensure proper format)
                 if history:
-                    new_history.extend(history)
+                    for item in history:
+                        if isinstance(item, list) and len(item) == 2:
+                            user_item, assistant_item = item
+                            
+                            # Ensure user message has correct format
+                            if not isinstance(user_item, dict) or "role" not in user_item or "content" not in user_item:
+                                user_item = {"role": "user", "content": str(user_item) if not isinstance(user_item, dict) else user_item.get("content", "")}
+                            
+                            # Ensure assistant message has correct format
+                            if not isinstance(assistant_item, dict) or "role" not in assistant_item or "content" not in assistant_item:
+                                assistant_item = {"role": "assistant", "content": str(assistant_item) if not isinstance(assistant_item, dict) else assistant_item.get("content", "")}
+                            
+                            formatted_history.append([user_item, assistant_item])
                 
                 # Add the new message pair
-                new_history.append([
+                formatted_history.append([
                     {"role": "user", "content": message}, 
                     {"role": "assistant", "content": response}
                 ])
                 
-                yield new_history, conversation_id
+                yield formatted_history, conversation_id
 
         # Save history if response is complete
         if is_complete or response:  # add response check as fallback
@@ -169,21 +208,32 @@ def respond(
     except Exception as e:
         print(f"Error generating response: {str(e)}")
         # Format error response in the way Gradio chatbot expects
-        new_history = []
+        formatted_history = []
         
-        # Copy existing history
+        # Copy existing history (ensure proper format)
         if history:
             for item in history:
                 if isinstance(item, list) and len(item) == 2:
-                    new_history.append(item)
+                    user_item, assistant_item = item
+                    
+                    # Ensure user message has correct format
+                    if not isinstance(user_item, dict) or "role" not in user_item or "content" not in user_item:
+                        user_item = {"role": "user", "content": str(user_item) if not isinstance(user_item, dict) else user_item.get("content", "")}
+                    
+                    # Ensure assistant message has correct format
+                    if not isinstance(assistant_item, dict) or "role" not in assistant_item or "content" not in assistant_item:
+                        assistant_item = {"role": "assistant", "content": str(assistant_item) if not isinstance(assistant_item, dict) else assistant_item.get("content", "")}
+                    
+                    formatted_history.append([user_item, assistant_item])
         
         # Add error message
-        new_history.append([
+        formatted_history.append([
             {"role": "user", "content": message}, 
             {"role": "assistant", "content": f"An error occurred while generating the response: {str(e)}"}
         ])
         
-        yield new_history, conversation_id
+        yield formatted_history, conversation_id
+
 
 def update_kb():
     """Function to update existing knowledge base with new documents"""
@@ -208,6 +258,13 @@ def respond_and_clear(message, history, conversation_id):
     temperature = MODEL_CONFIG['parameters']['temperature']
     top_p = MODEL_CONFIG['parameters']['top_p']
     
+    # Print debug information to help diagnose the issue
+    print("Debug - Message type:", type(message), "Content:", message)
+    print("Debug - History type:", type(history), "Content:", history)
+    
+    # Create user message in proper format
+    user_message = {"role": "user", "content": message}
+    
     # Use system message from constants
     response_generator = respond(
         message=message,
@@ -220,37 +277,59 @@ def respond_and_clear(message, history, conversation_id):
     )
     
     try:
+        # Get first response from generator
         new_history, conv_id = next(response_generator)
-        # Ensure each message in history is in correct format for Gradio messages type
+        
+        # Print debug information about the received history
+        print("Debug - New history received:", new_history)
+        
+        # Ensure the final output is properly formatted for Gradio
         formatted_history = []
-        for msg_pair in new_history:
-            if isinstance(msg_pair, list) and len(msg_pair) == 2:
-                # Format user message
-                if isinstance(msg_pair[0], str):
-                    user_msg = {"content": msg_pair[0], "role": "user"}
-                elif isinstance(msg_pair[0], dict) and "content" in msg_pair[0]:
-                    user_msg = msg_pair[0]
-                else:
-                    user_msg = {"content": str(msg_pair[0]), "role": "user"}
-
-                # Format assistant message
-                if isinstance(msg_pair[1], str):
-                    assistant_msg = {"content": msg_pair[1], "role": "assistant"}
-                elif isinstance(msg_pair[1], dict) and "content" in msg_pair[1]:
-                    assistant_msg = msg_pair[1]
-                else:
-                    assistant_msg = {"content": str(msg_pair[1]), "role": "assistant"}
-
+        for item in new_history:
+            if isinstance(item, list) and len(item) == 2:
+                user_msg, assistant_msg = item
+                
+                # Ensure user message is properly formatted
+                if not isinstance(user_msg, dict) or "role" not in user_msg or "content" not in user_msg:
+                    user_msg = {"role": "user", "content": str(user_msg) if not isinstance(user_msg, dict) else user_msg.get("content", "")}
+                
+                # Ensure assistant message is properly formatted
+                if not isinstance(assistant_msg, dict) or "role" not in assistant_msg or "content" not in assistant_msg:
+                    assistant_msg = {"role": "assistant", "content": str(assistant_msg) if not isinstance(assistant_msg, dict) else assistant_msg.get("content", "")}
+                
                 formatted_history.append([user_msg, assistant_msg])
+        
+        # Print the final formatted history
+        print("Debug - Formatted history:", formatted_history)
         
         return formatted_history, conv_id, ""  # Clear message input
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
-        error_msg = {"role": "assistant", "content": f"An error occurred: {str(e)}"}
+        # Create a properly formatted error message
+        error_history = []
         if history:
-            return history + [[{"role": "user", "content": message}, error_msg]], conversation_id, ""
-        else:
-            return [[{"role": "user", "content": message}, error_msg]], conversation_id, ""
+            # Copy existing history (ensuring proper format)
+            for item in history:
+                if isinstance(item, list) and len(item) == 2:
+                    user_msg, assistant_msg = item
+                    
+                    # Ensure user message is properly formatted
+                    if not isinstance(user_msg, dict) or "role" not in user_msg or "content" not in user_msg:
+                        user_msg = {"role": "user", "content": str(user_msg) if not isinstance(user_msg, dict) else user_msg.get("content", "")}
+                    
+                    # Ensure assistant message is properly formatted
+                    if not isinstance(assistant_msg, dict) or "role" not in assistant_msg or "content" not in assistant_msg:
+                        assistant_msg = {"role": "assistant", "content": str(assistant_msg) if not isinstance(assistant_msg, dict) else assistant_msg.get("content", "")}
+                    
+                    error_history.append([user_msg, assistant_msg])
+        
+        # Add the error message
+        error_history.append([
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": f"An error occurred: {str(e)}"}
+        ])
+        
+        return error_history, conversation_id, ""
 
 # Create interface
 with gr.Blocks() as demo:
