@@ -11,7 +11,10 @@ from config.settings import (
     EMBEDDING_MODEL,
     DATASET_ID,
     CHAT_HISTORY_PATH,
-    VECTOR_STORE_PATH
+    VECTOR_STORE_PATH,
+    MODELS,
+    DEFAULT_MODEL,
+    ACTIVE_MODEL
 )
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
@@ -319,26 +322,23 @@ with gr.Blocks() as demo:
             
             with gr.Row():
                 with gr.Column(scale=2):
-                    # Model Information
-                    gr.Markdown(f"""
-                    **Current Model:** {MODEL_CONFIG['name']}
+                    # Add model selector
+                    model_selector = gr.Dropdown(
+                        choices=list(MODELS.keys()),
+                        value=DEFAULT_MODEL,
+                        label="Select Model",
+                        interactive=True
+                    )
                     
-                    **Model ID:** `{MODEL_CONFIG['id']}`
+                    # Current model info display
+                    model_info = gr.Markdown()
                     
-                    **Description:** {MODEL_CONFIG['description']}
-                    
-                    **Type:** {MODEL_CONFIG['type']}
-                    
-                    **Embeddings Model:** `{EMBEDDING_MODEL}`
-                    *Used for vector store creation and similarity search*
-                    """)
-                    
-                    gr.Markdown("### Model Parameters")
+                    # Model Parameters
                     with gr.Row():
                         max_length = gr.Slider(
                             minimum=1,
                             maximum=4096,
-                            value=MODEL_CONFIG['parameters']['max_length'],
+                            value=ACTIVE_MODEL['parameters']['max_length'],
                             step=1,
                             label="Maximum Length",
                             interactive=False
@@ -346,7 +346,7 @@ with gr.Blocks() as demo:
                         temperature = gr.Slider(
                             minimum=0.1,
                             maximum=2.0,
-                            value=MODEL_CONFIG['parameters']['temperature'],
+                            value=ACTIVE_MODEL['parameters']['temperature'],
                             step=0.1,
                             label="Temperature",
                             interactive=False
@@ -355,7 +355,7 @@ with gr.Blocks() as demo:
                         top_p = gr.Slider(
                             minimum=0.1,
                             maximum=1.0,
-                            value=MODEL_CONFIG['parameters']['top_p'],
+                            value=ACTIVE_MODEL['parameters']['top_p'],
                             step=0.1,
                             label="Top-p",
                             interactive=False
@@ -363,12 +363,12 @@ with gr.Blocks() as demo:
                         rep_penalty = gr.Slider(
                             minimum=1.0,
                             maximum=2.0,
-                            value=MODEL_CONFIG['parameters']['repetition_penalty'],
+                            value=ACTIVE_MODEL['parameters']['repetition_penalty'],
                             step=0.1,
                             label="Repetition Penalty",
                             interactive=False
                         )
-                    
+
                     gr.Markdown("""
                     <small>
                     **Parameters explanation:**
@@ -423,6 +423,49 @@ with gr.Blocks() as demo:
                 inputs=[],
                 outputs=[analysis_output]
             )
+
+# Добавим функцию для обновления информации о модели
+def update_model_info(model_key):
+    """Update model information display"""
+    model = MODELS[model_key]
+    return f"""
+    **Current Model:** {model['name']}
+    
+    **Model ID:** `{model['id']}`
+    
+    **Description:** {model['description']}
+    
+    **Type:** {model['type']}
+    """
+
+# Добавим функцию для смены модели
+def change_model(model_key):
+    """Change active model"""
+    global client, ACTIVE_MODEL
+    
+    try:
+        # Update active model
+        ACTIVE_MODEL = MODELS[model_key]
+        
+        # Reinitialize client with new model
+        client = InferenceClient(
+            ACTIVE_MODEL["id"],
+            token=HF_TOKEN
+        )
+        
+        return update_model_info(model_key)
+    except Exception as e:
+        return f"Error changing model: {str(e)}"
+
+# Добавим обработчик события изменения модели
+model_selector.change(
+    fn=change_model,
+    inputs=[model_selector],
+    outputs=[model_info]
+)
+
+# При инициализации установим информацию о текущей модели
+model_info.value = update_model_info(DEFAULT_MODEL)
 
 # Launch application
 if __name__ == "__main__":
