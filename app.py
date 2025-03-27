@@ -150,79 +150,41 @@ def respond(
             token = chunk.choices[0].delta.content
             if token:
                 response += token
-                
-                # Create a properly formatted history for Gradio
-                formatted_history = []
-                
-                # Include existing history (ensure proper format)
-                if history:
-                    for item in history:
-                        if isinstance(item, list) and len(item) == 2:
-                            user_item, assistant_item = item
-                            
-                            # Ensure user message has correct format
-                            if not isinstance(user_item, dict) or "role" not in user_item or "content" not in user_item:
-                                user_item = {"role": "user", "content": str(user_item) if not isinstance(user_item, dict) else user_item.get("content", "")}
-                            
-                            # Ensure assistant message has correct format
-                            if not isinstance(assistant_item, dict) or "role" not in assistant_item or "content" not in assistant_item:
-                                assistant_item = {"role": "assistant", "content": str(assistant_item) if not isinstance(assistant_item, dict) else assistant_item.get("content", "")}
-                            
-                            formatted_history.append([user_item, assistant_item])
-                
-                # Add the new message pair
-                formatted_history.append([
-                    {"role": "user", "content": message}, 
-                    {"role": "assistant", "content": response}
-                ])
-                
-                yield formatted_history, conversation_id
+                # Create proper history format for Gradio
+                current_history = history.copy() if history else []
+                current_history.append({
+                    "role": "user",
+                    "content": message
+                })
+                current_history.append({
+                    "role": "assistant",
+                    "content": response
+                })
+                yield current_history, conversation_id
 
-        # Save history if response is complete
-        if is_complete or response:  # add response check as fallback
-            messages.append({"role": "assistant", "content": response})
-            try:
-                from src.knowledge_base.dataset import DatasetManager
-                from config.settings import HF_TOKEN
-                
-                dataset = DatasetManager(token=HF_TOKEN)
-                success, msg = dataset.save_chat_history(conversation_id, messages)
-                print(f"Chat history save attempt: {success}, Message: {msg}")
-                if not success:
-                    print(f"Failed to save chat history: {msg}")
-            except Exception as e:
-                import traceback
-                print(f"Exception while saving chat history: {str(e)}")
-                print(traceback.format_exc())
+        if is_complete or response:
+            final_history = history.copy() if history else []
+            final_history.append({
+                "role": "user",
+                "content": message
+            })
+            final_history.append({
+                "role": "assistant",
+                "content": response
+            })
+            yield final_history, conversation_id
             
     except Exception as e:
-        print(f"Error generating response: {str(e)}")
-        # Format error response in the way Gradio chatbot expects
-        formatted_history = []
-        
-        # Copy existing history (ensure proper format)
-        if history:
-            for item in history:
-                if isinstance(item, list) and len(item) == 2:
-                    user_item, assistant_item = item
-                    
-                    # Ensure user message has correct format
-                    if not isinstance(user_item, dict) or "role" not in user_item or "content" not in user_item:
-                        user_item = {"role": "user", "content": str(user_item) if not isinstance(user_item, dict) else user_item.get("content", "")}
-                    
-                    # Ensure assistant message has correct format
-                    if not isinstance(assistant_item, dict) or "role" not in assistant_item or "content" not in assistant_item:
-                        assistant_item = {"role": "assistant", "content": str(assistant_item) if not isinstance(assistant_item, dict) else assistant_item.get("content", "")}
-                    
-                    formatted_history.append([user_item, assistant_item])
-        
-        # Add error message
-        formatted_history.append([
-            {"role": "user", "content": message}, 
-            {"role": "assistant", "content": f"An error occurred while generating the response: {str(e)}"}
-        ])
-        
-        yield formatted_history, conversation_id
+        error_history = history.copy() if history else []
+        error_history.append({
+            "role": "user",
+            "content": message
+        })
+        error_history.append({
+            "role": "assistant",
+            "content": f"An error occurred: {str(e)}"
+        })
+        yield error_history, conversation_id
 
 
 def update_kb():
