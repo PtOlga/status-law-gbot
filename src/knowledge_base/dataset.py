@@ -315,62 +315,54 @@ class DatasetManager:
             return False, f"Failed to save chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
-        """
-        Get chat history from the dataset
-        
-        Args:
-            conversation_id: Conversation identifier (if None, returns all chats)
-            
-        Returns:
-            (success, chat history or error message)
-        """
         try:
-            # Добавим логирование
             logger.info(f"Attempting to get chat history from dataset {self.dataset_name}")
             
+            # Получаем список всех файлов в репозитории
             files = self.api.list_repo_files(
                 repo_id=self.dataset_name,
-                repo_type="dataset",
-                path="chat_history"
+                repo_type="dataset"
             )
             
-            logger.info(f"Found {len(files)} files in chat_history")
+            # Фильтруем только файлы из директории chat_history
+            chat_files = [f for f in files if f.startswith("chat_history/")]
+            logger.info(f"Found {len(chat_files)} files in chat_history")
             
-            # Filter files by conversation_id if specified
+            # Фильтруем по conversation_id если указан
             if conversation_id:
-                files = [f for f in files if f.startswith(f"chat_history/{conversation_id}_")]
-                logger.info(f"Filtered to {len(files)} files for conversation {conversation_id}")
+                chat_files = [f for f in chat_files if f.startswith(f"chat_history/{conversation_id}_")]
+                logger.info(f"Filtered to {len(chat_files)} files for conversation {conversation_id}")
             
-            # If no files found, return empty list
-            if not files or all(f.endswith(".gitkeep") for f in files):
+            # Если нет файлов, возвращаем пустой список
+            if not chat_files or all(f.endswith(".gitkeep") for f in chat_files):
                 logger.warning("No chat history files found")
                 return True, []
             
             chat_histories = []
-            for file in files:
-                if file.endswith(".gitkeep"):
-                    continue
-                
-                try:
-                    # Download and read file
-                    local_file = self.api.hf_hub_download(
-                        repo_id=self.dataset_name,
-                        filename=file,
-                        repo_type="dataset",
-                        local_dir=self.temp_dir
-                    )
+            with tempfile.TemporaryDirectory() as temp_dir:
+                for file in chat_files:
+                    if file.endswith(".gitkeep"):
+                        continue
                     
-                    with open(local_file, "r", encoding="utf-8") as f:
-                        chat_data = json.load(f)
-                        # Проверка структуры данных
-                        if not isinstance(chat_data, dict) or "messages" not in chat_data:
-                            logger.error(f"Invalid chat data structure in {file}")
-                            continue
-                        chat_histories.append(chat_data)
-                    
-                except Exception as e:
-                    logger.error(f"Error processing file {file}: {str(e)}")
-                    continue
+                    try:
+                        # Скачиваем и читаем файл
+                        local_file = self.api.hf_hub_download(
+                            repo_id=self.dataset_name,
+                            filename=file,
+                            repo_type="dataset",
+                            local_dir=temp_dir
+                        )
+                        
+                        with open(local_file, "r", encoding="utf-8") as f:
+                            chat_data = json.load(f)
+                            if not isinstance(chat_data, dict) or "messages" not in chat_data:
+                                logger.error(f"Invalid chat data structure in {file}")
+                                continue
+                            chat_histories.append(chat_data)
+                        
+                    except Exception as e:
+                        logger.error(f"Error processing file {file}: {str(e)}")
+                        continue
             
             return True, chat_histories
         
