@@ -244,16 +244,10 @@ def respond(
     # Convert history to OpenAI format for API call
     if history:
         try:
-            for item in history:
-                # Check if we have a pair of messages as expected
-                if len(item) == 2:
-                    user_msg, assistant_msg = item
-                    
-                    # Add user message
-                    messages.append({"role": "user", "content": user_msg})
-                    
-                    # Add assistant message
-                    messages.append({"role": "assistant", "content": assistant_msg})
+            for entry in history:
+                # Check if we have messages in the expected format
+                if isinstance(entry, dict) and 'role' in entry and 'content' in entry:
+                    messages.append(entry)
         except Exception as e:
             print(f"Error processing history: {str(e)}")
             # Continue with empty history if there was an error
@@ -280,9 +274,13 @@ def respond(
         # Reset fallback flag on successful API call
         fallback_model_attempted = False
         
-        # Return complete response immediately
+        # Return complete response in the new format
         final_history = history.copy() if history else []
-        final_history.append((message, response))
+        # Add user message
+        final_history.append({"role": "user", "content": message})
+        # Add assistant response
+        final_history.append({"role": "assistant", "content": response})
+        
         yield final_history, conversation_id
             
     except Exception as e:
@@ -352,7 +350,11 @@ def respond(
         log_api_error(message, error_message, ACTIVE_MODEL["id"])
         
         error_history = history.copy() if history else []
-        error_history.append((message, friendly_error))
+        # Add user message
+        error_history.append({"role": "user", "content": message})
+        # Add error message as assistant response
+        error_history.append({"role": "assistant", "content": friendly_error})
+        
         yield error_history, conversation_id
 
 def log_api_error(user_message, error_message, model_id, is_fallback=False):
@@ -399,11 +401,11 @@ def save_chat_history(history, conversation_id):
         # Format history for saving
         formatted_history = []
         for item in history:
-            if len(item) == 2:
-                user_msg, assistant_msg = item
+            # Handle dictionary format
+            if isinstance(item, dict) and 'role' in item and 'content' in item:
                 formatted_history.append({
-                    "user": user_msg,
-                    "assistant": assistant_msg,
+                    "role": item["role"],
+                    "content": item["content"],
                     "timestamp": datetime.datetime.now().isoformat()
                 })
         
@@ -455,9 +457,9 @@ def respond_and_clear(message, history, conversation_id):
         # Debug the response
         print("Debug - Final history:", new_history)
         
-        # Check if the history contains errors (special formatting for error messages)
+        # Check if the history contains errors (by looking for error message pattern)
         last_message = new_history[-1] if new_history else None
-        is_error = last_message and isinstance(last_message[1], str) and "⚠️ API Error" in last_message[1]
+        is_error = last_message and isinstance(last_message.get('content', ''), str) and "⚠️ API Error" in last_message.get('content', '')
         
         # Save chat history after response (even with errors)
         save_chat_history(new_history, conv_id)
@@ -477,7 +479,10 @@ def respond_and_clear(message, history, conversation_id):
         else:
             error_message = f"⚠️ Error: {str(e)}"
             
-        error_history = history + [(message, error_message)]
+        # Create error history in the correct format
+        error_history = history.copy() if history else []
+        error_history.append({"role": "user", "content": message})
+        error_history.append({"role": "assistant", "content": error_message})
         
         # Still try to save history with error
         if conversation_id:
@@ -639,7 +644,7 @@ with gr.Blocks() as demo:
                     chatbot = gr.Chatbot(
                         label="Chat",
                         avatar_images=None,
-                        type='messages'
+                        type='messages'  # This is the key setting - use 'messages' format
                     )
                     
                     with gr.Row():
