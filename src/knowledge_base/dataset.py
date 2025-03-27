@@ -1,5 +1,5 @@
 """
-Модуль для управления датасетом на Hugging Face Hub
+Module for managing dataset on Hugging Face Hub
 """
 
 import os
@@ -8,6 +8,7 @@ import tempfile
 from typing import Tuple, List, Dict, Any, Optional, Union
 from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
+from langchain_community.vectorstores import FAISS
 from config.settings import VECTOR_STORE_PATH, HF_TOKEN
 
 class DatasetManager:
@@ -22,7 +23,7 @@ class DatasetManager:
         self.token = token if token else HF_TOKEN
         if not self.token:
             raise ValueError("Hugging Face token not found. Please set HUGGINGFACE_TOKEN environment variable")
-            
+        
         self.dataset_name = dataset_name
         self.api = HfApi(token=self.token)
         
@@ -39,20 +40,20 @@ class DatasetManager:
 
     def init_dataset_structure(self) -> Tuple[bool, str]:
         """
-        Инициализация структуры датасета на Hugging Face
+        Initialize dataset structure with required directories
         
         Returns:
-            (успех, сообщение)
+            (success, message)
         """
         try:
-            # Проверяем существование репозитория
+            # Check if repository exists
             try:
                 self.api.repo_info(repo_id=self.dataset_name, repo_type="dataset")
             except Exception:
-                # Если репозиторий не существует, создаем его
+                # Create repository if it doesn't exist
                 self.api.create_repo(repo_id=self.dataset_name, repo_type="dataset", private=True)
             
-            # Создаем пустые .gitkeep файлы для поддержания структуры
+            # Create empty .gitkeep files to maintain structure
             directories = ["vector_store", "chat_history", "documents"]
             
             for directory in directories:
@@ -70,41 +71,40 @@ class DatasetManager:
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
             
-            return True, "Структура датасета успешно создана"
+            return True, "Dataset structure initialized successfully"
+            
         except Exception as e:
-            return False, f"Ошибка при создании структуры датасета: {str(e)}"
+            return False, f"Error initializing dataset structure: {str(e)}"
 
     def upload_vector_store(self) -> Tuple[bool, str]:
         """
-        Загрузка векторного хранилища в датасет
+        Upload vector store to dataset
         
         Returns:
-            (успех, сообщение)
+            (success, message)
         """
         try:
-            # Проверяем наличие файлов
+            if not os.path.exists(VECTOR_STORE_PATH):
+                return False, "Vector store directory not found"
+                
             index_path = os.path.join(VECTOR_STORE_PATH, "index.faiss")
             config_path = os.path.join(VECTOR_STORE_PATH, "index.pkl")
             
-            if not os.path.exists(index_path):
-                return False, f"Файл векторного хранилища не найден: {index_path}"
-                
-            if not os.path.exists(config_path):
-                return False, f"Файл конфигурации не найден: {config_path}"
-
-            # Загружаем файлы
+            if not (os.path.exists(index_path) and os.path.exists(config_path)):
+                return False, "Vector store files not found"
+            
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             
-            # Сначала сохраняем старые версии файлов в архивной директории, если они существуют
+            # First save old files to archive if they exist
             try:
-                # Проверяем наличие старых файлов
+                # Check for existing files
                 self.api.hf_hub_download(
                     repo_id=self.dataset_name,
                     filename="vector_store/index.faiss",
                     repo_type="dataset"
                 )
                 
-                # Если файл существует, создаем архивную копию
+                # If file exists, create archive copy
                 self.api.upload_file(
                     path_or_fileobj=index_path,
                     path_in_repo=f"vector_store/archive/index_{timestamp}.faiss",
@@ -119,7 +119,7 @@ class DatasetManager:
                     repo_type="dataset"
                 )
             except Exception:
-                # Если файлов нет, создаем директорию для архива
+                # If no files exist, create archive directory
                 with tempfile.NamedTemporaryFile(delete=False) as temp:
                     temp_path = temp.name
                 
@@ -134,7 +134,7 @@ class DatasetManager:
                     if os.path.exists(temp_path):
                         os.remove(temp_path)
             
-            # Загружаем текущие файлы
+            # Upload current files
             self.api.upload_file(
                 path_or_fileobj=index_path,
                 path_in_repo="vector_store/index.faiss",
@@ -149,7 +149,7 @@ class DatasetManager:
                 repo_type="dataset"
             )
             
-            # Обновляем метаданные о последнем обновлении
+            # Update metadata about last update
             metadata = {
                 "last_update": timestamp,
                 "version": "1.0"
@@ -170,9 +170,10 @@ class DatasetManager:
                 if os.path.exists(temp_name):
                     os.remove(temp_name)
             
-            return True, "Векторное хранилище успешно загружено"
+            return True, "Vector store uploaded successfully"
+            
         except Exception as e:
-            return False, f"Ошибка при загрузке векторного хранилища: {str(e)}"
+            return False, f"Error uploading vector store: {str(e)}"
 
     def download_vector_store(self, force: bool = False) -> Tuple[bool, Union[FAISS, str]]:
         """
@@ -228,7 +229,7 @@ class DatasetManager:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Проверяем существование директории chat_history
+            # Check if chat_history directory exists
             try:
                 self.api.list_repo_files(
                     repo_id=self.dataset_name,
@@ -236,7 +237,7 @@ class DatasetManager:
                     path="chat_history"
                 )
             except Exception:
-                # Если директории нет, создаем её
+                # Create directory if it doesn't exist
                 with tempfile.NamedTemporaryFile(delete=False) as temp:
                     self.api.upload_file(
                         path_or_fileobj=temp.name,
@@ -282,11 +283,11 @@ class DatasetManager:
                 if os.path.exists(temp_name):
                     os.unlink(temp_name)
             
-            print(f"Successfully saved chat history: {filename}")  # Adding a log for debugging
+            print(f"Successfully saved chat history: {filename}")
             return True, f"Chat history saved successfully as {filename}"
         
         except Exception as e:
-            print(f"Error in save_chat_history: {str(e)}")  # Adding a log for debugging
+            print(f"Error in save_chat_history: {str(e)}")
             return False, f"Failed to save chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:

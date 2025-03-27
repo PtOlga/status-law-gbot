@@ -279,9 +279,18 @@ with gr.Blocks() as demo:
                 
                 with gr.Column(scale=1):
                     gr.Markdown("### Knowledge Base Management")
-                    update_kb_btn = gr.Button("Update Knowledge Base", variant="secondary")
-                    rebuild_kb_btn = gr.Button("Rebuild Knowledge Base", variant="primary")
-                    kb_status = gr.Textbox(label="Knowledge Base Status", interactive=False)
+                    gr.Markdown("""
+                    - **Update**: Add new documents to existing base
+                    - **Rebuild**: Create new base from scratch
+                    """)
+                    with gr.Row():
+                        update_kb_btn = gr.Button("📝 Update Base", variant="secondary", scale=1)
+                        rebuild_kb_btn = gr.Button("🔄 Rebuild Base", variant="primary", scale=1)
+                    kb_status = gr.Textbox(
+                        label="Status",
+                        placeholder="Knowledge base status will appear here...",
+                        interactive=False
+                    )
 
             submit_btn.click(
                 respond_and_clear,
