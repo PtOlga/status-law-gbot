@@ -273,7 +273,8 @@ with gr.Blocks() as demo:
                 with gr.Column(scale=3):
                     chatbot = gr.Chatbot(
                         label="Chat",
-                        avatar_images=None
+                        avatar_images=None,
+                        type='messages'
                     )
                     
                     with gr.Row():
@@ -383,18 +384,18 @@ with gr.Blocks() as demo:
                     gr.Markdown(f"""
                     **Base Model Path:** 
                     ```
-                    {MODEL_CONFIG['training']['base_model_path']}
+                    {ACTIVE_MODEL['training']['base_model_path']}
                     ```
                     
                     **Fine-tuned Model Path:**
                     ```
-                    {MODEL_CONFIG['training']['fine_tuned_path']}
+                    {ACTIVE_MODEL['training']['fine_tuned_path']}
                     ```
                     
                     **LoRA Configuration:**
-                    - Rank (r): {MODEL_CONFIG['training']['lora_config']['r']}
-                    - Alpha: {MODEL_CONFIG['training']['lora_config']['lora_alpha']}
-                    - Dropout: {MODEL_CONFIG['training']['lora_config']['lora_dropout']}
+                    - Rank (r): {ACTIVE_MODEL['training']['lora_config']['r']}
+                    - Alpha: {ACTIVE_MODEL['training']['lora_config']['lora_alpha']}
+                    - Dropout: {ACTIVE_MODEL['training']['lora_config']['lora_dropout']}
                     """)
 
         with gr.Tab("Model Training"):
