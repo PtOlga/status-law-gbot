@@ -26,58 +26,60 @@ from web.training_interface import (
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
-# Extended model information
+# Enhanced model details for UI
 MODEL_DETAILS = {
     "llama-7b": {
         "full_name": "Meta Llama 2 7B Chat",
         "capabilities": [
-            "Multilingual (supports Russian, English and other languages)",
+            "Multilingual support ",
             "Good performance on legal texts",
             "Free model with open license",
-            "Easy to run on computers with 16GB+ RAM"
+            "Can run on computers with 16GB+ RAM"
         ],
         "limitations": [
             "Limited knowledge of specific legal terminology",
-            "May give incorrect answers to complex legal questions",
-            "Knowledge limited by training data"
+            "May provide incorrect answers to complex legal questions",
+            "Knowledge is limited to training data"
         ],
         "use_cases": [
             "Legal document analysis",
             "Answering general legal questions",
-            "Legal knowledge base search",
-            "Document drafting assistance"
+            "Searching through legal knowledge base",
+            "Assistance in document drafting"
         ],
         "documentation": "https://huggingface.co/meta-llama/Llama-2-7b-chat-hf"
     },
     "zephyr-7b": {
         "full_name": "HuggingFaceH4 Zephyr 7B Beta",
         "capabilities": [
-            "High performance on instruction tasks",
+            "High performance on instruction-following tasks",
             "Good response accuracy",
-            "Advanced reasoning",
+            "Advanced reasoning capabilities",
             "Excellent text generation quality"
         ],
         "limitations": [
-            "May require API payment for usage",
+            "May require paid API for usage",
             "Limited support for languages other than English",
-            "Less optimization for legal topics than specialized models"
+            "Less optimization for legal topics compared to specialized models"
         ],
         "use_cases": [
             "Complex legal reasoning",
-            "Case law analysis",
-            "Legislative research",
+            "Case analysis",
+            "Legal research",
             "Structured legal text generation"
         ],
         "documentation": "https://huggingface.co/HuggingFaceH4/zephyr-7b-beta"
     }
 }
 
-# Путь к файлу с пользовательскими настройками
+# Path for user preferences file
 USER_PREFERENCES_PATH = os.path.join(os.path.dirname(__file__), "user_preferences.json")
+ERROR_LOGS_PATH = os.path.join(os.path.dirname(__file__), "error_logs")
 
-# Глобальные переменные
+# Global variables
 client = None
 context_store = {}
+fallback_model_attempted = False
 
 print(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
 
@@ -131,6 +133,33 @@ def initialize_client(model_id=None):
         token=HF_TOKEN
     )
     return client
+
+def switch_to_model(model_key):
+    """Switch to specified model and update global variables"""
+    global ACTIVE_MODEL, client
+    
+    try:
+        # Update active model
+        ACTIVE_MODEL = MODELS[model_key]
+        
+        # Reinitialize client with new model
+        client = InferenceClient(
+            ACTIVE_MODEL["id"],
+            token=HF_TOKEN
+        )
+        
+        print(f"Switched to model: {model_key}")
+        return True
+    except Exception as e:
+        print(f"Error switching to model {model_key}: {str(e)}")
+        return False
+
+def get_fallback_model(current_model):
+    """Get a fallback model different from the current one"""
+    for key in MODELS.keys():
+        if key != current_model:
+            return key
+    return None  # No fallback available
 
 def get_context(message, conversation_id):
     """Get context from knowledge base"""
@@ -191,7 +220,11 @@ def respond(
     max_tokens,
     temperature,
     top_p,
+    attempt_fallback=True
 ):
+    """Generate response using the current model with fallback option"""
+    global fallback_model_attempted
+    
     # Create ID for new conversation
     if not conversation_id:
         import uuid
@@ -231,10 +264,6 @@ def respond(
     # Debug: print API messages
     print("Debug - API messages:", messages)
     
-    # Send API request and stream response
-    response = ""
-    is_complete = False
-    
     try:
         # Non-streaming version for debugging
         full_response = client.chat_completion(
@@ -248,6 +277,9 @@ def respond(
         response = full_response.choices[0].message.content
         print(f"Debug - Full response from API: {response}")
         
+        # Reset fallback flag on successful API call
+        fallback_model_attempted = False
+        
         # Return complete response immediately
         final_history = history.copy() if history else []
         final_history.append((message, response))
@@ -255,10 +287,92 @@ def respond(
             
     except Exception as e:
         print(f"Debug - Error during API call: {str(e)}")
+        error_message = str(e)
+        current_model_key = None
+        
+        # Find current model key
+        for key, model in MODELS.items():
+            if model["id"] == ACTIVE_MODEL["id"]:
+                current_model_key = key
+                break
+        
+        # Try fallback model if appropriate
+        if attempt_fallback and ("402" in error_message or "429" in error_message) and not fallback_model_attempted:
+            fallback_model_key = get_fallback_model(current_model_key)
+            if fallback_model_key:
+                fallback_model_attempted = True
+                
+                # Log fallback attempt
+                print(f"Attempting to fallback from {current_model_key} to {fallback_model_key}")
+                log_api_error(message, error_message, ACTIVE_MODEL["id"], is_fallback=True)
+                
+                # Switch model temporarily
+                original_model = ACTIVE_MODEL.copy()
+                if switch_to_model(fallback_model_key):
+                    # Try with fallback model (but don't fallback again)
+                    fallback_generator = respond(
+                        message, 
+                        history, 
+                        conversation_id, 
+                        system_message, 
+                        max_tokens, 
+                        temperature, 
+                        top_p,
+                        attempt_fallback=False
+                    )
+                    
+                    yield from fallback_generator
+                    
+                    # Restore original model
+                    ACTIVE_MODEL.update(original_model)
+                    initialize_client(ACTIVE_MODEL["id"])
+                    return
+        
+        # Format user-friendly error message
+        if "402" in error_message and "Payment Required" in error_message:
+            friendly_error = (
+                "⚠️ API Error: Free request limit exceeded for this model.\n\n"
+                "Solutions:\n"
+                "1. Switch to another model in the 'Model Settings' tab\n"
+                "2. Use a local model version\n"
+                "3. Subscribe to Hugging Face PRO for higher limits"
+            )
+        elif "401" in error_message and "Unauthorized" in error_message:
+            friendly_error = (
+                "⚠️ API Error: Authentication problem. Please check your API key."
+            )
+        elif "429" in error_message and "Too Many Requests" in error_message:
+            friendly_error = (
+                "⚠️ API Error: Too many requests. Please try again later."
+            )
+        else:
+            friendly_error = f"⚠️ API Error: There was an error accessing the model. Details: {error_message}"
+        
+        # Log the error
+        log_api_error(message, error_message, ACTIVE_MODEL["id"])
+        
         error_history = history.copy() if history else []
-        error_history.append((message, f"An error occurred: {str(e)}"))
+        error_history.append((message, friendly_error))
         yield error_history, conversation_id
 
+def log_api_error(user_message, error_message, model_id, is_fallback=False):
+    """Log API errors to a separate file for monitoring"""
+    try:
+        os.makedirs(ERROR_LOGS_PATH, exist_ok=True)
+        
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_path = os.path.join(ERROR_LOGS_PATH, f"api_error_{timestamp}.log")
+        
+        with open(log_path, 'w', encoding='utf-8') as f:
+            f.write(f"Timestamp: {datetime.datetime.now().isoformat()}\n")
+            f.write(f"Model: {model_id}\n")
+            f.write(f"User message: {user_message}\n")
+            f.write(f"Error: {error_message}\n")
+            f.write(f"Fallback attempt: {is_fallback}\n")
+            
+        print(f"API error logged to {log_path}")
+    except Exception as e:
+        print(f"Failed to log API error: {str(e)}")
 
 def update_kb():
     """Function to update existing knowledge base with new documents"""
@@ -341,14 +455,29 @@ def respond_and_clear(message, history, conversation_id):
         # Debug the response
         print("Debug - Final history:", new_history)
         
-        # Save chat history after response
+        # Check if the history contains errors (special formatting for error messages)
+        last_message = new_history[-1] if new_history else None
+        is_error = last_message and isinstance(last_message[1], str) and "⚠️ API Error" in last_message[1]
+        
+        # Save chat history after response (even with errors)
         save_chat_history(new_history, conv_id)
         
         return new_history, conv_id, ""  # Clear message input
         
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
-        error_history = history + [(message, f"An error occurred: {str(e)}")]
+        
+        # Create a more readable error message
+        if "incompatible with messages format" in str(e):
+            error_message = (
+                "⚠️ Message processing error: Problem with message format.\n\n"
+                "Please try to clear the chat history using the 'Clear' button or "
+                "switch to another model."
+            )
+        else:
+            error_message = f"⚠️ Error: {str(e)}"
+            
+        error_history = history + [(message, error_message)]
         
         # Still try to save history with error
         if conversation_id:
@@ -372,7 +501,7 @@ def update_model_info(model_key):
 def get_model_details_html(model_key):
     """Get detailed HTML for model information panel"""
     if model_key not in MODEL_DETAILS:
-        return "<p>Информация о модели недоступна</p>"
+        return "<p>Model information not available</p>"
     
     details = MODEL_DETAILS[model_key]
     
@@ -380,22 +509,22 @@ def get_model_details_html(model_key):
     <div style="padding: 15px; border: 1px solid #ccc; border-radius: 5px; margin-top: 10px;">
         <h3>{details['full_name']}</h3>
         
-        <h4>Возможности:</h4>
+        <h4>Capabilities:</h4>
         <ul>
             {"".join([f"<li>{cap}</li>" for cap in details['capabilities']])}
         </ul>
         
-        <h4>Ограничения:</h4>
+        <h4>Limitations:</h4>
         <ul>
             {"".join([f"<li>{lim}</li>" for lim in details['limitations']])}
         </ul>
         
-        <h4>Рекомендуемое использование:</h4>
+        <h4>Recommended Use Cases:</h4>
         <ul>
             {"".join([f"<li>{use}</li>" for use in details['use_cases']])}
         </ul>
         
-        <p><a href="{details['documentation']}" target="_blank">Документация модели</a></p>
+        <p><a href="{details['documentation']}" target="_blank">Model Documentation</a></p>
     </div>
     """
     
@@ -403,9 +532,12 @@ def get_model_details_html(model_key):
 
 def change_model(model_key):
     """Change active model and update parameters"""
-    global client, ACTIVE_MODEL
+    global client, ACTIVE_MODEL, fallback_model_attempted
     
     try:
+        # Reset fallback flag when explicitly changing model
+        fallback_model_attempted = False
+        
         # Update active model
         ACTIVE_MODEL = MODELS[model_key]
         
@@ -415,7 +547,7 @@ def change_model(model_key):
             token=HF_TOKEN
         )
         
-        # Сохраняем выбранную модель в предпочтениях
+        # Save selected model in preferences
         save_user_preferences(model_key)
         
         # Return both model info and updated parameters
@@ -445,7 +577,7 @@ def save_parameters(model_key, max_len, temp, top_p_val, rep_pen):
         ACTIVE_MODEL['parameters']['top_p'] = top_p_val
         ACTIVE_MODEL['parameters']['repetition_penalty'] = rep_pen
         
-        # Сохраняем параметры в предпочтениях
+        # Save parameters in preferences
         params = {
             'max_length': max_len,
             'temperature': temp,
@@ -465,19 +597,19 @@ def initialize_app():
     preferences = load_user_preferences()
     selected_model = preferences.get("selected_model", DEFAULT_MODEL)
     
-    # Убедиться, что выбранная модель существует
+    # Make sure the selected model exists
     if selected_model not in MODELS:
         selected_model = DEFAULT_MODEL
     
-    # Установить активную модель
+    # Set active model
     ACTIVE_MODEL = MODELS[selected_model]
     
-    # Загрузить сохраненные параметры, если они есть
+    # Load saved parameters if they exist
     saved_params = preferences.get("parameters", {}).get(selected_model)
     if saved_params:
         ACTIVE_MODEL['parameters'].update(saved_params)
     
-    # Инициализировать клиент
+    # Initialize client
     client = InferenceClient(
         ACTIVE_MODEL["id"],
         token=HF_TOKEN
@@ -491,10 +623,10 @@ selected_model = initialize_app()
 
 # Create interface
 with gr.Blocks() as demo:
-    # Определяем функцию clear_conversation внутри блока для доступа к компонентам
+    # Define clear_conversation function within the block for component access
     def clear_conversation():
         """Clear conversation and save history before clearing"""
-        return [], None  # Просто возвращаем пустые значения
+        return [], None  # Just return empty values
     
     with gr.Tabs():
         with gr.Tab("Chat"):
@@ -604,7 +736,7 @@ with gr.Blocks() as demo:
                             interactive=True
                         )
                     
-                    # Save parameters button
+                    # Button to save parameters
                     save_params_btn = gr.Button("Save Parameters", variant="primary")
 
                     gr.Markdown("""
@@ -672,14 +804,14 @@ with gr.Blocks() as demo:
         outputs=[model_info, max_length, temperature, top_p, rep_penalty, model_loading]
     )
     
-    # Update model details panel when model changes
+    # Update model details panel when changing model
     model_selector.change(
         fn=get_model_details_html,
         inputs=[model_selector],
         outputs=[model_details]
     )
     
-    # Parameters save handler
+    # Parameter save handler
     save_params_btn.click(
         fn=save_parameters,
         inputs=[model_selector, max_length, temperature, top_p, rep_penalty],
@@ -688,6 +820,9 @@ with gr.Blocks() as demo:
 
 # Launch application
 if __name__ == "__main__":
+    # Create error logs directory
+    os.makedirs(ERROR_LOGS_PATH, exist_ok=True)
+    
     # Check knowledge base availability in dataset
     if not load_vector_store():
         print("Knowledge base not found. Please create it through the interface.")
