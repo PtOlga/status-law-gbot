@@ -11,9 +11,11 @@ URLS = [
     "https://status.law/international-prosecution-protection", 
     "https://status.law/interpol-red-notice-removal",  
     "https://status.law/practice-areas",  
-    "https://status.law/reputation-protection",
-    "https://status.law/faq"
-]
+    "https://status.law/reputation-protection"
+ ]   
+#   ,
+#    "https://status.law/faq"
+#]
 
 # Text chunking settings
 CHUNK_SIZE = 500
