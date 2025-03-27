@@ -1,5 +1,8 @@
 import gradio as gr
 import os
+import json
+import datetime
+from pathlib import Path
 from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import HF_TOKEN, MODEL_CONFIG, EMBEDDING_MODEL
@@ -20,8 +23,11 @@ client = InferenceClient(
     token=HF_TOKEN
 )
 
-# State for storing context
+# State for storing context and chat history
 context_store = {}
+
+# Directory for storing chat histories
+CHAT_HISTORY_DIR = os.environ.get("CHAT_HISTORY_DIR", "./chat_histories")
 
 def get_context(message, conversation_id):
     """Get context from knowledge base"""
@@ -167,6 +173,42 @@ def rebuild_kb():
     except Exception as e:
         return f"Error creating knowledge base: {str(e)}"
 
+def save_chat_history(history, conversation_id):
+    """Save chat history to a file"""
+    try:
+        # Create directory if it doesn't exist
+        os.makedirs(CHAT_HISTORY_DIR, exist_ok=True)
+        
+        # Format history for saving
+        formatted_history = []
+        for item in history:
+            if len(item) == 2:
+                user_msg, assistant_msg = item
+                formatted_history.append({
+                    "user": user_msg,
+                    "assistant": assistant_msg,
+                    "timestamp": datetime.datetime.now().isoformat()
+                })
+        
+        # Create filename with conversation_id and timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        filename = f"{conversation_id}_{timestamp}.json"
+        filepath = os.path.join(CHAT_HISTORY_DIR, filename)
+        
+        # Save to file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump({
+                "conversation_id": conversation_id,
+                "timestamp": datetime.datetime.now().isoformat(),
+                "history": formatted_history
+            }, f, ensure_ascii=False, indent=2)
+        
+        print(f"Debug - Chat history saved to {filepath}")
+        return True
+    except Exception as e:
+        print(f"Error saving chat history: {str(e)}")
+        return False
+
 def respond_and_clear(message, history, conversation_id):
     """Handle chat message and clear input"""
     # Get model parameters from config
@@ -196,11 +238,20 @@ def respond_and_clear(message, history, conversation_id):
         # Debug the response
         print("Debug - Final history:", new_history)
         
+        # Save chat history after response
+        save_chat_history(new_history, conv_id)
+        
         return new_history, conv_id, ""  # Clear message input
         
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
-        return history + [(message, f"An error occurred: {str(e)}")], conversation_id, ""
+        error_history = history + [(message, f"An error occurred: {str(e)}")]
+        
+        # Still try to save history with error
+        if conversation_id:
+            save_chat_history(error_history, conversation_id)
+            
+        return error_history, conversation_id, ""
 
 # Create interface
 with gr.Blocks() as demo:
@@ -248,7 +299,14 @@ with gr.Blocks() as demo:
             )
             update_kb_btn.click(update_kb, None, kb_status)
             rebuild_kb_btn.click(rebuild_kb, None, kb_status)
-            clear_btn.click(lambda: ([], None), None, [chatbot, conversation_id])
+            def clear_conversation():
+                """Clear conversation and save history before clearing"""
+                # Save current history if there's a conversation
+                if chatbot and conversation_id:
+                    save_chat_history(chatbot, conversation_id)
+                return [], None
+                
+            clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
 
         with gr.Tab("Model Settings"):
             gr.Markdown("### Model Configuration")
