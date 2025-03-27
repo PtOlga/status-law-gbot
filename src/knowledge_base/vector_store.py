@@ -54,10 +54,10 @@ def create_vector_store(mode: str = "rebuild"):
             else:
                 return False, "Failed to load existing vector store for update"
         
-        # Upload to dataset with force flag
+        # Upload to dataset
         from src.knowledge_base.dataset import DatasetManager
         dataset = DatasetManager(token=HF_TOKEN)
-        success, message = dataset.upload_vector_store(vector_store, force_update=True)
+        success, message = dataset.upload_vector_store(vector_store)  # del force_update
         
         if not success:
             return False, f"Error uploading to dataset: {message}"
