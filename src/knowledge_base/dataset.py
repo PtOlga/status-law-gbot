@@ -342,8 +342,11 @@ class DatasetManager:
                             if not isinstance(chat_data, dict):
                                 logger.error(f"Chat data is not a dictionary in {file}")
                                 continue
-                            if "messages" not in chat_data:
-                                logger.error(f"No 'messages' key in chat data in {file}")
+                                
+                            # Check for either 'messages' or 'history' key
+                            messages = chat_data.get('messages') or chat_data.get('history')
+                            if not messages:
+                                logger.error(f"No 'messages' or 'history' key in chat data in {file}")
                                 continue
                             if not isinstance(chat_data["messages"], list):
                                 logger.error(f"'messages' is not a list in {file}")
