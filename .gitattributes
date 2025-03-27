@@ -8,11 +8,8 @@
 *.h5 filter=lfs diff=lfs merge=lfs -text
 *.joblib filter=lfs diff=lfs merge=lfs -text
 *.lfs.* filter=lfs diff=lfs merge=lfs -text
-<<<<<<< HEAD
-=======
 *.lz4 filter=lfs diff=lfs merge=lfs -text
 *.mds filter=lfs diff=lfs merge=lfs -text
->>>>>>> 0d2d42071b65c9b49ea7e471b711fe3cdf9fb532
 *.mlmodel filter=lfs diff=lfs merge=lfs -text
 *.model filter=lfs diff=lfs merge=lfs -text
 *.msgpack filter=lfs diff=lfs merge=lfs -text
@@ -38,31 +35,6 @@ saved_model/**/* filter=lfs diff=lfs merge=lfs -text
 *.zip filter=lfs diff=lfs merge=lfs -text
 *.zst filter=lfs diff=lfs merge=lfs -text
 *tfevents* filter=lfs diff=lfs merge=lfs -text
-<<<<<<< HEAD
-=======
-# Audio files - uncompressed
-*.pcm filter=lfs diff=lfs merge=lfs -text
-*.sam filter=lfs diff=lfs merge=lfs -text
-*.raw filter=lfs diff=lfs merge=lfs -text
-# Audio files - compressed
-*.aac filter=lfs diff=lfs merge=lfs -text
-*.flac filter=lfs diff=lfs merge=lfs -text
-*.mp3 filter=lfs diff=lfs merge=lfs -text
-*.ogg filter=lfs diff=lfs merge=lfs -text
-*.wav filter=lfs diff=lfs merge=lfs -text
-# Image files - uncompressed
-*.bmp filter=lfs diff=lfs merge=lfs -text
-*.gif filter=lfs diff=lfs merge=lfs -text
-*.png filter=lfs diff=lfs merge=lfs -text
-*.tiff filter=lfs diff=lfs merge=lfs -text
-# Image files - compressed
-*.jpg filter=lfs diff=lfs merge=lfs -text
-*.jpeg filter=lfs diff=lfs merge=lfs -text
-*.webp filter=lfs diff=lfs merge=lfs -text
-# Video files - compressed
-*.mp4 filter=lfs diff=lfs merge=lfs -text
-*.webm filter=lfs diff=lfs merge=lfs -text
->>>>>>> 0d2d42071b65c9b49ea7e471b711fe3cdf9fb532
 
 # Vector store files
 *.faiss filter=lfs diff=lfs merge=lfs -text
