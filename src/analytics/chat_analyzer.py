@@ -1,10 +1,18 @@
-from typing import List, Dict, Any, Tuple, Optional
-from collections import Counter
-from datetime import datetime
-import re
-import json
+"""
+Module for analyzing chat history and extracting useful data for training
+"""
 
+import json
+import logging
+from typing import List, Dict, Any, Tuple, Optional
+from collections import Counter, defaultdict
+import re
+from datetime import datetime
 from src.knowledge_base.dataset import DatasetManager
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 class ChatAnalyzer:
     """Chat history analyzer"""
@@ -186,7 +194,10 @@ class ChatAnalyzer:
             qa_pairs = self.extract_question_answer_pairs()
             
             if not qa_pairs:
+                logger.warning("Not enough data for export")
                 return False, "Not enough data for export"
+            
+            logger.info(f"Found {len(qa_pairs)} question-answer pairs for export")
             
             with open(output_file, "w", encoding="utf-8") as f:
                 for pair in qa_pairs:
@@ -198,8 +209,11 @@ class ChatAnalyzer:
                     }
                     f.write(json.dumps(training_example, ensure_ascii=False) + "\n")
             
+            logger.info(f"Data successfully exported to {output_file}")
             return True, f"Training data successfully exported to {output_file}. Exported {len(qa_pairs)} examples."
+            
         except Exception as e:
+            logger.error(f"Error during data export: {str(e)}")
             return False, f"Error exporting training data: {str(e)}"
 
     def get_chat_data(self) -> List[Dict[str, Any]]:
@@ -210,9 +224,8 @@ class ChatAnalyzer:
             List of chat histories
         """
         success, chat_data = self.dataset_manager.get_chat_history()
-        # Добавим логирование для отладки
         if not success:
-            logger.error(f"Failed to get chat history: {chat_data}")  # chat_data содержит сообщение об ошибке
+            logger.error(f"Failed to get chat history: {chat_data}")
         if not chat_data:
             logger.warning("Chat data is empty")
         return chat_data if success and chat_data else []
