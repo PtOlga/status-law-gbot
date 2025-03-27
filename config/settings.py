@@ -13,6 +13,10 @@ VECTOR_STORE_PATH = "vector_store"
 # Paths configuration
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 TRAINING_OUTPUT_DIR = os.path.join(MODEL_PATH, "fine_tuned")
+
+# Create necessary directories if they don't exist
+os.makedirs(MODEL_PATH, exist_ok=True)
+os.makedirs(TRAINING_OUTPUT_DIR, exist_ok=True)
 MODELS_REGISTRY_PATH = os.path.join(MODEL_PATH, "registry.json")
 
 # Models configuration
