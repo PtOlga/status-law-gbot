@@ -5,7 +5,14 @@ import datetime
 from pathlib import Path
 from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
-from config.settings import HF_TOKEN, MODEL_CONFIG, EMBEDDING_MODEL, VECTOR_STORE_PATH
+from config.settings import (
+    HF_TOKEN, 
+    MODEL_CONFIG, 
+    EMBEDDING_MODEL,
+    DATASET_ID,
+    CHAT_HISTORY_PATH,
+    VECTOR_STORE_PATH
+)
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
     get_models_df,
@@ -26,9 +33,7 @@ client = InferenceClient(
 # State for storing context and chat history
 context_store = {}
 
-# Directory for storing chat histories
-CHAT_HISTORY_DIR = os.path.join(VECTOR_STORE_PATH, "chat_histories")
-print(f"Chat histories will be saved to: {CHAT_HISTORY_DIR}")
+print(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
 
 def get_context(message, conversation_id):
     """Get context from knowledge base"""
@@ -178,7 +183,7 @@ def save_chat_history(history, conversation_id):
     """Save chat history to a file"""
     try:
         # Create directory if it doesn't exist
-        os.makedirs(CHAT_HISTORY_DIR, exist_ok=True)
+        os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
         
         # Format history for saving
         formatted_history = []
@@ -194,7 +199,7 @@ def save_chat_history(history, conversation_id):
         # Create filename with conversation_id and timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         filename = f"{conversation_id}_{timestamp}.json"
-        filepath = os.path.join(CHAT_HISTORY_DIR, filename)
+        filepath = os.path.join(CHAT_HISTORY_PATH, filename)
         
         # Save to file
         with open(filepath, 'w', encoding='utf-8') as f:

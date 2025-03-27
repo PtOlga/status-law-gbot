@@ -5,10 +5,15 @@ HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
+# Dataset configuration
+DATASET_ID = "Rulga/status-law-knowledge-base"
+CHAT_HISTORY_PATH = "chat_history"
+VECTOR_STORE_PATH = "vector_store"
+
 # Paths configuration
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
 TRAINING_OUTPUT_DIR = os.path.join(MODEL_PATH, "fine_tuned")
-VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_store")
+#VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_store")
 MODELS_REGISTRY_PATH = os.path.join(MODEL_PATH, "registry.json")
 
 # Model configuration
