@@ -186,37 +186,45 @@ class DatasetManager:
             return False, f"Error uploading vector store: {str(e)}"
 
     def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
-        """
-        Download vector store from dataset
-        
-        Returns:
-            (success, vector_store or error message)
-        """
+        """Download vector store from dataset"""
         try:
             with tempfile.TemporaryDirectory() as temp_dir:
+                print(f"Downloading to temporary directory: {temp_dir}")
+                
                 # Download files to temporary directory
                 try:
-                    self.api.hf_hub_download(
+                    index_path = self.api.hf_hub_download(
                         repo_id=self.dataset_name,
                         filename="vector_store/index.faiss",
                         repo_type="dataset",
                         local_dir=temp_dir
                     )
+                    print(f"Downloaded index.faiss to: {index_path}")
                     
-                    self.api.hf_hub_download(
+                    config_path = self.api.hf_hub_download(
                         repo_id=self.dataset_name,
                         filename="vector_store/index.pkl",
                         repo_type="dataset",
                         local_dir=temp_dir
                     )
+                    print(f"Downloaded index.pkl to: {config_path}")
+                    
+                    # Verify files exist
+                    if not os.path.exists(index_path) or not os.path.exists(config_path):
+                        return False, f"Downloaded files not found at {temp_dir}"
                     
                     # Load vector store from temporary directory
                     embeddings = HuggingFaceEmbeddings(
                         model_name=EMBEDDING_MODEL,
                         model_kwargs={'device': 'cpu'}
                     )
+                    
+                    # Use the directory containing the files
+                    store_dir = os.path.dirname(index_path)
+                    print(f"Loading vector store from: {store_dir}")
+                    
                     vector_store = FAISS.load_local(
-                        temp_dir,
+                        store_dir,
                         embeddings,
                         allow_dangerous_deserialization=True
                     )
