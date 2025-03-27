@@ -228,54 +228,22 @@ class DatasetManager:
             return False, f"Error downloading vector store: {str(e)}"
 
     def save_chat_history(self, conversation_id: str, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
-        """
-        Save chat history to the dataset
-        
-        Args:
-            conversation_id: Unique conversation identifier
-            messages: List of message dictionaries with 'role' and 'content'
-        
-        Returns:
-            Tuple of (success: bool, message: str)
-        """
         try:
-            # Check if chat_history directory exists
-            try:
-                self.api.list_repo_files(
-                    repo_id=self.dataset_name,
-                    repo_type="dataset",
-                    path="chat_history"
-                )
-            except Exception:
-                # Create directory if it doesn't exist
-                with tempfile.NamedTemporaryFile(delete=False) as temp:
-                    self.api.upload_file(
-                        path_or_fileobj=temp.name,
-                        path_in_repo="chat_history/.gitkeep",
-                        repo_id=self.dataset_name,
-                        repo_type="dataset"
-                    )
-                    os.unlink(temp.name)
-
             # Create filename with timestamp
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"chat_history/{conversation_id}_{timestamp}.json"
+            timestamp = datetime.now().isoformat()
+            filename = f"chat_history/{conversation_id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
             
-            # Prepare data for saving with additional metadata
+            # Prepare data for saving with consistent structure
             chat_data = {
                 "conversation_id": conversation_id,
                 "timestamp": timestamp,
-                "messages": messages,
-                "metadata": {
-                    "saved_at": datetime.now().isoformat(),
-                    "messages_count": len(messages)
-                }
+                "messages": messages  # Using 'messages' consistently instead of 'history'
             }
             
-            # Use temporary file for safe writing with explicit encoding
+            # Use temporary file for safe writing
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False, encoding="utf-8") as temp:
                 json.dump(chat_data, temp, ensure_ascii=False, indent=2)
-                temp.flush()  # Ensure all data is written
+                temp.flush()
                 temp_name = temp.name
 
             try:
@@ -293,11 +261,11 @@ class DatasetManager:
                 if os.path.exists(temp_name):
                     os.unlink(temp_name)
             
-            print(f"Successfully saved chat history: {filename}")
+            logger.info(f"Successfully saved chat history: {filename}")
             return True, f"Chat history saved successfully as {filename}"
         
         except Exception as e:
-            print(f"Error in save_chat_history: {str(e)}")
+            logger.error(f"Error in save_chat_history: {str(e)}")
             return False, f"Failed to save chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
@@ -316,7 +284,6 @@ class DatasetManager:
             
             if conversation_id:
                 chat_files = [f for f in chat_files if conversation_id in f]
-                logger.info(f"Filtered to {len(chat_files)} files for conversation {conversation_id}")
             
             if not chat_files:
                 logger.warning("No chat history files found")
@@ -338,29 +305,48 @@ class DatasetManager:
                         
                         with open(local_file, "r", encoding="utf-8") as f:
                             chat_data = json.load(f)
-                            # Validate chat data structure
+                            logger.debug(f"Loaded chat data: {chat_data}")  # Debug log
+                            
                             if not isinstance(chat_data, dict):
                                 logger.error(f"Chat data is not a dictionary in {file}")
                                 continue
-                                
-                            # Check for either 'messages' or 'history' key
-                            messages = chat_data.get('messages') or chat_data.get('history')
+                            
+                            # Get messages from either 'messages' or 'history' key
+                            messages = None
+                            if "messages" in chat_data:
+                                messages = chat_data["messages"]
+                            elif "history" in chat_data:
+                                messages = chat_data["history"]
+                            
                             if not messages:
-                                logger.error(f"No 'messages' or 'history' key in chat data in {file}")
+                                logger.error(f"No messages found in {file}")
                                 continue
-                            if not isinstance(chat_data["messages"], list):
-                                logger.error(f"'messages' is not a list in {file}")
+                                
+                            if not isinstance(messages, list):
+                                logger.error(f"Messages is not a list in {file}")
                                 continue
                             
-                            chat_histories.append(chat_data)
+                            # Create standardized format
+                            standardized_data = {
+                                "conversation_id": chat_data.get("conversation_id", "unknown"),
+                                "timestamp": chat_data.get("timestamp", datetime.now().isoformat()),
+                                "messages": messages
+                            }
+                            
+                            chat_histories.append(standardized_data)
                             logger.info(f"Successfully loaded chat data from {file}")
                             
                     except json.JSONDecodeError as e:
                         logger.error(f"Invalid JSON in file {file}: {str(e)}")
                         continue
                     except Exception as e:
-                        logger.error(f"Error processing file {file}: {str(e)}")
+                        logger.error(f"Error processing file {file}: {e}")
                         continue
+            
+            if not chat_histories:
+                logger.warning("No valid chat histories found")
+            else:
+                logger.info(f"Successfully loaded {len(chat_histories)} chat histories")
             
             return True, chat_histories
             
