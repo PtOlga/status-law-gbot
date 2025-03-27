@@ -7,14 +7,13 @@ from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import (
     HF_TOKEN, 
-    MODEL_CONFIG, 
+    MODELS,
+    ACTIVE_MODEL,
     EMBEDDING_MODEL,
     DATASET_ID,
     CHAT_HISTORY_PATH,
     VECTOR_STORE_PATH,
-    MODELS,
-    DEFAULT_MODEL,
-    ACTIVE_MODEL
+    DEFAULT_MODEL
 )
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
@@ -29,7 +28,7 @@ if not HF_TOKEN:
 
 # Initialize HF client with token
 client = InferenceClient(
-    MODEL_CONFIG["id"],
+    ACTIVE_MODEL["id"],
     token=HF_TOKEN
 )
 
@@ -221,9 +220,9 @@ def save_chat_history(history, conversation_id):
 def respond_and_clear(message, history, conversation_id):
     """Handle chat message and clear input"""
     # Get model parameters from config
-    max_tokens = MODEL_CONFIG['parameters']['max_length']
-    temperature = MODEL_CONFIG['parameters']['temperature']
-    top_p = MODEL_CONFIG['parameters']['top_p']
+    max_tokens = ACTIVE_MODEL['parameters']['max_length']  # используем ACTIVE_MODEL вместо MODEL_CONFIG
+    temperature = ACTIVE_MODEL['parameters']['temperature']
+    top_p = ACTIVE_MODEL['parameters']['top_p']
     
     # Print debug information to help diagnose the issue
     print("Debug - Message type:", type(message), "Content:", message)
