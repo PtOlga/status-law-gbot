@@ -24,6 +24,9 @@ Status Law Assistant is a smart chatbot that answers user questions about Status
 - Context-aware response generation
 - Multi-language query support (responds in the language of the question)
 - Customizable text generation parameters (temperature, token count, etc.)
+- Model switching with fallback mechanism
+- Fine-tuning capabilities based on chat history
+- Multiple model support (Llama 2, Zephyr)
 
 ## 🚀 Technologies
 
@@ -32,6 +35,8 @@ Status Law Assistant is a smart chatbot that answers user questions about Status
 - **FAISS**: For efficient vector search
 - **Gradio**: For user interface creation
 - **BeautifulSoup**: For web page information extraction
+- **PEFT**: For efficient fine-tuning using LoRA
+- **SentencePiece**: For tokenization
 
 ## 🏗️ Project Structure
 
@@ -40,7 +45,7 @@ status-law-gbot/
 ├── app.py                 # Main application file with interface and request handling logic
 ├── requirements.txt       # Project dependencies
 ├── config/               # Configuration files
-│   ├── settings.py       # Application settings
+│   ├── settings.py       # Application settings and model configurations
 │   └── constants.py      # Constants and default values
 ├── src/                  # Source code
 │   ├── analytics/        # Analytics module
@@ -49,9 +54,10 @@ status-law-gbot/
 │   │   ├── loader.py
 │   │   └── vector_store.py
 │   ├── training/         # Model training module
-│   │   ├── fine_tuner.py
-│   │   └── model_manager.py
-│   └── models/          # Model-related code
+│   │   ├── fine_tuner.py  # LoRA fine-tuning implementation
+│   │   └── model_manager.py  # Model switching and management
+│   └── models/          # Model storage
+│       └── fine_tuned/  # Fine-tuned model storage
 ├── web/                 # Web interface components
 │   └── training_interface.py
 └── data/               # Data storage
@@ -71,6 +77,10 @@ status-law-gbot/
 ### Chat History
 - `data/chat_history/logs.json`: JSON file containing chat history and metadata
 
+### Models
+- `src/models/fine_tuned/`: Directory for storing fine-tuned models
+- `src/models/registry.json`: Model registry and configuration
+
 ## 🚀 Usage
 
 The Status Law Assistant chatbot uses this structure to:
@@ -78,6 +88,8 @@ The Status Law Assistant chatbot uses this structure to:
 2. Maintain chat history for conversation continuity
 3. Track user interactions and improve response quality
 4. Fine-tune models based on conversation history
+5. Provide automatic model fallback in case of API errors
+6. Support multiple language models with easy switching
 
 ## 🛠️ Setup
 
@@ -95,12 +107,41 @@ pip install -r requirements.txt
 3. Set up environment variables:
 ```bash
 cp .env.example .env
-# Edit .env with your configuration
+# Edit .env with your configuration, including HUGGINGFACE_TOKEN
 ```
 
 4. Run the application:
 ```bash
 python app.py
+```
+
+## 🔧 Model Fine-tuning
+
+To fine-tune the model on your chat history:
+
+```python
+from src.training.fine_tuner import finetune_from_chat_history
+
+success, message = finetune_from_chat_history(epochs=3)
+print(message)
+```
+
+The fine-tuning process uses LoRA (Low-Rank Adaptation) for efficient training with minimal resource requirements.
+
+## 🔄 Model Switching
+
+The application supports multiple models with automatic fallback:
+
+- Llama 2 7B Chat (default)
+- Zephyr 7B
+- Custom fine-tuned versions
+
+Models can be switched dynamically through the interface or programmatically:
+
+```python
+from src.training.model_manager import switch_to_model
+
+switch_to_model("llama-7b")  # or "zephyr-7b"
 ```
 
 ## 🔗 Related Links
