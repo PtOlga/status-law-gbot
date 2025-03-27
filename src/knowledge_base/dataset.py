@@ -77,166 +77,148 @@ class DatasetManager:
         except Exception as e:
             return False, f"Error initializing dataset structure: {str(e)}"
 
-    def upload_vector_store(self) -> Tuple[bool, str]:
+    def upload_vector_store(self, vector_store: FAISS) -> Tuple[bool, str]:
         """
         Upload vector store to dataset
+        
+        Args:
+            vector_store: FAISS vector store to upload
         
         Returns:
             (success, message)
         """
         try:
-            if not os.path.exists(VECTOR_STORE_PATH):
-                return False, "Vector store directory not found"
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Save vector store to temporary directory
+                vector_store.save_local(folder_path=temp_dir)
                 
-            index_path = os.path.join(VECTOR_STORE_PATH, "index.faiss")
-            config_path = os.path.join(VECTOR_STORE_PATH, "index.pkl")
-            
-            if not (os.path.exists(index_path) and os.path.exists(config_path)):
-                return False, "Vector store files not found"
-            
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            
-            # First save old files to archive if they exist
-            try:
-                # Check for existing files
-                self.api.hf_hub_download(
-                    repo_id=self.dataset_name,
-                    filename="vector_store/index.faiss",
-                    repo_type="dataset"
-                )
+                index_path = os.path.join(temp_dir, "index.faiss")
+                config_path = os.path.join(temp_dir, "index.pkl")
                 
-                # If file exists, create archive copy
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                
+                # First save old files to archive if they exist
+                try:
+                    # Check for existing files
+                    self.api.hf_hub_download(
+                        repo_id=self.dataset_name,
+                        filename="vector_store/index.faiss",
+                        repo_type="dataset"
+                    )
+                    
+                    # If file exists, create archive copy
+                    self.api.upload_file(
+                        path_or_fileobj=index_path,
+                        path_in_repo=f"vector_store/archive/index_{timestamp}.faiss",
+                        repo_id=self.dataset_name,
+                        repo_type="dataset"
+                    )
+                    
+                    self.api.upload_file(
+                        path_or_fileobj=config_path,
+                        path_in_repo=f"vector_store/archive/index_{timestamp}.pkl",
+                        repo_id=self.dataset_name,
+                        repo_type="dataset"
+                    )
+                except Exception:
+                    # If no files exist, create archive directory
+                    with tempfile.NamedTemporaryFile(delete=False) as temp:
+                        temp_path = temp.name
+                    
+                    try:
+                        self.api.upload_file(
+                            path_or_fileobj=temp_path,
+                            path_in_repo="vector_store/archive/.gitkeep",
+                            repo_id=self.dataset_name,
+                            repo_type="dataset"
+                        )
+                    finally:
+                        if os.path.exists(temp_path):
+                            os.remove(temp_path)
+                
+                # Upload current files
                 self.api.upload_file(
                     path_or_fileobj=index_path,
-                    path_in_repo=f"vector_store/archive/index_{timestamp}.faiss",
+                    path_in_repo="vector_store/index.faiss",
                     repo_id=self.dataset_name,
                     repo_type="dataset"
                 )
                 
                 self.api.upload_file(
                     path_or_fileobj=config_path,
-                    path_in_repo=f"vector_store/archive/index_{timestamp}.pkl",
+                    path_in_repo="vector_store/index.pkl",
                     repo_id=self.dataset_name,
                     repo_type="dataset"
                 )
-            except Exception:
-                # If no files exist, create archive directory
-                with tempfile.NamedTemporaryFile(delete=False) as temp:
-                    temp_path = temp.name
+                
+                # Update metadata about last update
+                metadata = {
+                    "last_update": timestamp,
+                    "version": "1.0"
+                }
+                
+                with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as temp:
+                    json.dump(metadata, temp, ensure_ascii=False, indent=2)
+                    temp_name = temp.name
                 
                 try:
                     self.api.upload_file(
-                        path_or_fileobj=temp_path,
-                        path_in_repo="vector_store/archive/.gitkeep",
+                        path_or_fileobj=temp_name,
+                        path_in_repo="vector_store/metadata.json",
                         repo_id=self.dataset_name,
                         repo_type="dataset"
                     )
                 finally:
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-            
-            # Upload current files
-            self.api.upload_file(
-                path_or_fileobj=index_path,
-                path_in_repo="vector_store/index.faiss",
-                repo_id=self.dataset_name,
-                repo_type="dataset"
-            )
-            
-            self.api.upload_file(
-                path_or_fileobj=config_path,
-                path_in_repo="vector_store/index.pkl",
-                repo_id=self.dataset_name,
-                repo_type="dataset"
-            )
-            
-            # Update metadata about last update
-            metadata = {
-                "last_update": timestamp,
-                "version": "1.0"
-            }
-            
-            with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False) as temp:
-                json.dump(metadata, temp, ensure_ascii=False, indent=2)
-                temp_name = temp.name
-            
-            try:
-                self.api.upload_file(
-                    path_or_fileobj=temp_name,
-                    path_in_repo="vector_store/metadata.json",
-                    repo_id=self.dataset_name,
-                    repo_type="dataset"
-                )
-            finally:
-                if os.path.exists(temp_name):
-                    os.remove(temp_name)
-            
-            return True, "Vector store uploaded successfully"
-            
+                    if os.path.exists(temp_name):
+                        os.remove(temp_name)
+                
+                return True, "Vector store uploaded successfully"
+                
         except Exception as e:
             return False, f"Error uploading vector store: {str(e)}"
 
-    def download_vector_store(self, force: bool = False) -> Tuple[bool, Union[FAISS, str]]:
+    def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
         """
         Download vector store from dataset
-        
-        Args:
-            force: Force download even if local files exist
         
         Returns:
             (success, vector_store or error message)
         """
         try:
-            # Check if local files exist and force is False
-            if not force and os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
-                # Instead of returning string, load and return the vector store
-                embeddings = HuggingFaceEmbeddings(
-                    model_name=EMBEDDING_MODEL,
-                    model_kwargs={'device': 'cpu'}
-                )
-                vector_store = FAISS.load_local(
-                    VECTOR_STORE_PATH,
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
-                return True, vector_store
-            
-            # Ensure vector store directory exists
-            os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
-            
-            # Download files
-            try:
-                self.api.hf_hub_download(
-                    repo_id=self.dataset_name,
-                    filename="vector_store/index.faiss",
-                    repo_type="dataset",
-                    local_dir=VECTOR_STORE_PATH
-                )
+            with tempfile.TemporaryDirectory() as temp_dir:
+                # Download files to temporary directory
+                try:
+                    self.api.hf_hub_download(
+                        repo_id=self.dataset_name,
+                        filename="vector_store/index.faiss",
+                        repo_type="dataset",
+                        local_dir=temp_dir
+                    )
+                    
+                    self.api.hf_hub_download(
+                        repo_id=self.dataset_name,
+                        filename="vector_store/index.pkl",
+                        repo_type="dataset",
+                        local_dir=temp_dir
+                    )
+                    
+                    # Load vector store from temporary directory
+                    embeddings = HuggingFaceEmbeddings(
+                        model_name=EMBEDDING_MODEL,
+                        model_kwargs={'device': 'cpu'}
+                    )
+                    vector_store = FAISS.load_local(
+                        temp_dir,
+                        embeddings,
+                        allow_dangerous_deserialization=True
+                    )
+                    return True, vector_store
+                    
+                except Exception as e:
+                    return False, f"Failed to download vector store: {str(e)}"
                 
-                self.api.hf_hub_download(
-                    repo_id=self.dataset_name,
-                    filename="vector_store/index.pkl",
-                    repo_type="dataset",
-                    local_dir=VECTOR_STORE_PATH
-                )
-                
-                # After successful download, load and return the vector store
-                embeddings = HuggingFaceEmbeddings(
-                    model_name=EMBEDDING_MODEL,
-                    model_kwargs={'device': 'cpu'}
-                )
-                vector_store = FAISS.load_local(
-                    VECTOR_STORE_PATH,
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
-                return True, vector_store
-                
-            except Exception as e:
-                return False, f"Failed to download vector store: {str(e)}"
-            
         except Exception as e:
-            return False, f"Error in download_vector_store: {str(e)}"
+            return False, f"Error downloading vector store: {str(e)}"
 
     def save_chat_history(self, conversation_id: str, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
         """

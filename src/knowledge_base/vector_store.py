@@ -50,11 +50,7 @@ def create_vector_store(mode: str = "rebuild"):
             
             if success:
                 # Add new documents to existing store
-                vector_store = FAISS.load_local(
-                    VECTOR_STORE_PATH,
-                    embeddings,
-                    allow_dangerous_deserialization=True
-                )
+                vector_store = result
                 vector_store.add_documents(chunks)
             else:
                 return False, "Failed to load existing vector store for update"
@@ -62,28 +58,13 @@ def create_vector_store(mode: str = "rebuild"):
             # Create new vector store
             vector_store = FAISS.from_documents(chunks, embeddings)
         
-        # Save and upload
-        with tempfile.TemporaryDirectory() as temp_dir:
-            vector_store.save_local(folder_path=temp_dir)
-            
-            # Copy files to VECTOR_STORE_PATH for subsequent loading
-            os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
-            for file in ["index.faiss", "index.pkl"]:
-                shutil.copy2(
-                    os.path.join(temp_dir, file),
-                    os.path.join(VECTOR_STORE_PATH, file)
-                )
-            
-            # Upload to dataset
-            from src.knowledge_base.dataset import DatasetManager
-            dataset = DatasetManager(token=HF_TOKEN)
-            success, message = dataset.upload_vector_store()
-            
-            # Clean up local files
-            shutil.rmtree(VECTOR_STORE_PATH)
-            
-            if not success:
-                return False, f"Error uploading to dataset: {message}"
+        # Upload to dataset
+        from src.knowledge_base.dataset import DatasetManager
+        dataset = DatasetManager(token=HF_TOKEN)
+        success, message = dataset.upload_vector_store(vector_store)
+        
+        if not success:
+            return False, f"Error uploading to dataset: {message}"
         
         action = "updated" if mode == "update" else "created"
         return True, f"Knowledge base {action} successfully! Processed {len(documents)} documents, {len(chunks)} chunks."
@@ -94,7 +75,6 @@ def create_vector_store(mode: str = "rebuild"):
 def load_vector_store():
     """Load vector store"""
     try:
-        # First check if we need to download from dataset
         from src.knowledge_base.dataset import DatasetManager
         dataset = DatasetManager(token=HF_TOKEN)
         success, result = dataset.download_vector_store()
@@ -103,19 +83,7 @@ def load_vector_store():
             print(f"Failed to download vector store: {result}")
             return None
             
-        # Now try to load the local vector store
-        embeddings = get_embeddings()
-        
-        if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
-            print("Vector store files not found locally")
-            return None
-        
-        vector_store = FAISS.load_local(
-            VECTOR_STORE_PATH,
-            embeddings,
-            allow_dangerous_deserialization=True
-        )
-        return vector_store
+        return result
         
     except Exception as e:
         print(f"Error loading vector store: {str(e)}")
