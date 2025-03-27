@@ -75,4 +75,7 @@ vector_store/archive/index_20250327_124336.faiss filter=lfs diff=lfs merge=lfs -
 vector_store/archive/index_20250327_134810.faiss filter=lfs diff=lfs merge=lfs -text
 vector_store/archive/index_20250327_140709.faiss filter=lfs diff=lfs merge=lfs -text
 vector_store/archive/index_20250327_141318.faiss filter=lfs diff=lfs merge=lfs -text
+<<<<<<< HEAD
+>>>>>>> 1227bb58cb66f0669c27bd271ec321d40241c893
+=======
 >>>>>>> 1227bb58cb66f0669c27bd271ec321d40241c893
