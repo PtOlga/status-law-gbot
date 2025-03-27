@@ -5,7 +5,7 @@ import datetime
 from pathlib import Path
 from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
-from config.settings import HF_TOKEN, MODEL_CONFIG, EMBEDDING_MODEL
+from config.settings import HF_TOKEN, MODEL_CONFIG, EMBEDDING_MODEL, VECTOR_STORE_PATH
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
     get_models_df,
@@ -27,7 +27,8 @@ client = InferenceClient(
 context_store = {}
 
 # Directory for storing chat histories
-CHAT_HISTORY_DIR = os.environ.get("CHAT_HISTORY_DIR", "./chat_histories")
+CHAT_HISTORY_DIR = os.path.join(VECTOR_STORE_PATH, "chat_histories")
+print(f"Chat histories will be saved to: {CHAT_HISTORY_DIR}")
 
 def get_context(message, conversation_id):
     """Get context from knowledge base"""
