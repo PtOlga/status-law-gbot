@@ -5,7 +5,7 @@
 import os
 import json
 import tempfile
-from typing import Tuple, List, Dict, Any, Optional
+from typing import Tuple, List, Dict, Any, Optional, Union
 from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
 from config.settings import VECTOR_STORE_PATH, HF_TOKEN
@@ -174,38 +174,26 @@ class DatasetManager:
         except Exception as e:
             return False, f"Ошибка при загрузке векторного хранилища: {str(e)}"
 
-    def download_vector_store(self, force: bool = False) -> Tuple[bool, str]:
+    def download_vector_store(self, force: bool = False) -> Tuple[bool, Union[FAISS, str]]:
         """
-        Загрузка векторного хранилища из датасета
+        Download vector store from dataset
         
         Args:
-            force: Принудительная загрузка даже если локальные файлы существуют
-            
+            force: Force download even if local files exist
+        
         Returns:
-            (успех, сообщение)
+            (success, vector_store or error message)
         """
         try:
-            # Создаем директорию если её нет
+            # Check if local files exist and force is False
+            if not force and os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
+                return True, "Local files exist"
+            
+            # Ensure vector store directory exists
             os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
             
-            # Проверяем наличие локальных файлов
-            index_path = os.path.join(VECTOR_STORE_PATH, "index.faiss")
-            config_path = os.path.join(VECTOR_STORE_PATH, "index.pkl")
-            
-            if not force and os.path.exists(index_path) and os.path.exists(config_path):
-                return True, "Локальные файлы векторного хранилища уже существуют"
-            
-            # Загружаем файлы
+            # Download files
             try:
-                # Пробуем получить метаданные для проверки существования файлов
-                self.api.hf_hub_download(
-                    repo_id=self.dataset_name,
-                    filename="vector_store/metadata.json",
-                    repo_type="dataset",
-                    local_dir=VECTOR_STORE_PATH
-                )
-                
-                # Загружаем файлы векторного хранилища
                 self.api.hf_hub_download(
                     repo_id=self.dataset_name,
                     filename="vector_store/index.faiss",
@@ -220,11 +208,13 @@ class DatasetManager:
                     local_dir=VECTOR_STORE_PATH
                 )
                 
-                return True, "Векторное хранилище успешно загружено"
+                return True, "Vector store downloaded successfully"
+            
             except Exception as download_error:
-                return False, f"Ошибка при загрузке файлов: {str(download_error)}"
+                return False, f"Failed to download vector store: {str(download_error)}"
+            
         except Exception as e:
-            return False, f"Ошибка при загрузке векторного хранилища: {str(e)}"
+            return False, f"Error in download_vector_store: {str(e)}"
 
     def save_chat_history(self, conversation_id: str, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
         """

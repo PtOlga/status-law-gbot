@@ -62,18 +62,30 @@ def create_vector_store():
 
 def load_vector_store():
     """Load vector store"""
-    embeddings = get_embeddings()
-    
-    if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
-        return None
-    
     try:
+        # First check if we need to download from dataset
+        from src.knowledge_base.dataset import DatasetManager
+        dataset = DatasetManager(token=HF_TOKEN)
+        success, result = dataset.download_vector_store()
+        
+        if not success:
+            print(f"Failed to download vector store: {result}")
+            return None
+            
+        # Now try to load the local vector store
+        embeddings = get_embeddings()
+        
+        if not os.path.exists(os.path.join(VECTOR_STORE_PATH, "index.faiss")):
+            print("Vector store files not found locally")
+            return None
+        
         vector_store = FAISS.load_local(
             VECTOR_STORE_PATH,
             embeddings,
             allow_dangerous_deserialization=True
         )
         return vector_store
+        
     except Exception as e:
         print(f"Error loading vector store: {str(e)}")
         return None
