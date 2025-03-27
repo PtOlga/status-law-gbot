@@ -261,6 +261,46 @@ def respond_and_clear(message, history, conversation_id):
             
         return error_history, conversation_id, ""
 
+# Функции для обновления информации о модели
+def update_model_info(model_key):
+    """Update model information display"""
+    model = MODELS[model_key]
+    return f"""
+    **Current Model:** {model['name']}
+    
+    **Model ID:** `{model['id']}`
+    
+    **Description:** {model['description']}
+    
+    **Type:** {model['type']}
+    """
+
+# Функция для смены модели
+def change_model(model_key):
+    """Change active model"""
+    global client, ACTIVE_MODEL
+    
+    try:
+        # Update active model
+        ACTIVE_MODEL = MODELS[model_key]
+        
+        # Reinitialize client with new model
+        client = InferenceClient(
+            ACTIVE_MODEL["id"],
+            token=HF_TOKEN
+        )
+        
+        return update_model_info(model_key)
+    except Exception as e:
+        return f"Error changing model: {str(e)}"
+
+def clear_conversation():
+    """Clear conversation and save history before clearing"""
+    # Save current history if there's a conversation
+    if chatbot and conversation_id:
+        save_chat_history(chatbot, conversation_id)
+    return [], None
+
 # Create interface
 with gr.Blocks() as demo:
     with gr.Tabs():
@@ -308,13 +348,7 @@ with gr.Blocks() as demo:
             )
             update_kb_btn.click(update_kb, None, kb_status)
             rebuild_kb_btn.click(rebuild_kb, None, kb_status)
-            def clear_conversation():
-                """Clear conversation and save history before clearing"""
-                # Save current history if there's a conversation
-                if chatbot and conversation_id:
-                    save_chat_history(chatbot, conversation_id)
-                return [], None
-                
+            
             clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
 
         with gr.Tab("Model Settings"):
@@ -423,49 +457,16 @@ with gr.Blocks() as demo:
                 inputs=[],
                 outputs=[analysis_output]
             )
-
-# Добавим функцию для обновления информации о модели
-def update_model_info(model_key):
-    """Update model information display"""
-    model = MODELS[model_key]
-    return f"""
-    **Current Model:** {model['name']}
     
-    **Model ID:** `{model['id']}`
+    # ПЕРЕМЕЩЕНО ВНУТРЬ БЛОКА: Добавляем обработчик события изменения модели
+    model_selector.change(
+        fn=change_model,
+        inputs=[model_selector],
+        outputs=[model_info]
+    )
     
-    **Description:** {model['description']}
-    
-    **Type:** {model['type']}
-    """
-
-# Добавим функцию для смены модели
-def change_model(model_key):
-    """Change active model"""
-    global client, ACTIVE_MODEL
-    
-    try:
-        # Update active model
-        ACTIVE_MODEL = MODELS[model_key]
-        
-        # Reinitialize client with new model
-        client = InferenceClient(
-            ACTIVE_MODEL["id"],
-            token=HF_TOKEN
-        )
-        
-        return update_model_info(model_key)
-    except Exception as e:
-        return f"Error changing model: {str(e)}"
-
-# Добавим обработчик события изменения модели
-model_selector.change(
-    fn=change_model,
-    inputs=[model_selector],
-    outputs=[model_info]
-)
-
-# При инициализации установим информацию о текущей модели
-model_info.value = update_model_info(DEFAULT_MODEL)
+    # ПЕРЕМЕЩЕНО ВНУТРЬ БЛОКА: При инициализации устанавливаем информацию о текущей модели
+    model_info.update(value=update_model_info(DEFAULT_MODEL))
 
 # Launch application
 if __name__ == "__main__":
