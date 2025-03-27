@@ -435,9 +435,9 @@ def save_chat_history(history, conversation_id):
             # Initialize the Hugging Face API client
             api = HfApi(token=HF_TOKEN)
             
-            # Target path in the dataset
-            dataset_chat_dir = "chat_histories"
-            target_path = f"{dataset_chat_dir}/{filename}"
+           # Extract just the directory name from CHAT_HISTORY_PATH
+            dir_name = os.path.basename(CHAT_HISTORY_PATH)
+            target_path = f"{dir_name}/{filename}"
             
             # Upload the file to the dataset
             api.upload_file(
