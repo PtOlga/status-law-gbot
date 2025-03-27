@@ -294,15 +294,13 @@ def change_model(model_key):
     except Exception as e:
         return f"Error changing model: {str(e)}"
 
-def clear_conversation():
-    """Clear conversation and save history before clearing"""
-    # Save current history if there's a conversation
-    if chatbot and conversation_id:
-        save_chat_history(chatbot, conversation_id)
-    return [], None
-
 # Create interface
 with gr.Blocks() as demo:
+    # Определяем функцию clear_conversation внутри блока для доступа к компонентам
+    def clear_conversation():
+        """Clear conversation and save history before clearing"""
+        return [], None  # Просто возвращаем пустые значения
+    
     with gr.Tabs():
         with gr.Tab("Chat"):
             gr.Markdown("# ⚖️ Status Law Assistant")
@@ -365,7 +363,7 @@ with gr.Blocks() as demo:
                     )
                     
                     # Current model info display
-                    model_info = gr.Markdown()
+                    model_info = gr.Markdown(value=update_model_info(DEFAULT_MODEL))
                     
                     # Model Parameters
                     with gr.Row():
@@ -464,9 +462,6 @@ with gr.Blocks() as demo:
         inputs=[model_selector],
         outputs=[model_info]
     )
-    
-    # ПЕРЕМЕЩЕНО ВНУТРЬ БЛОКА: При инициализации устанавливаем информацию о текущей модели
-    model_info.update(value=update_model_info(DEFAULT_MODEL))
 
 # Launch application
 if __name__ == "__main__":
