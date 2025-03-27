@@ -3,7 +3,8 @@ import os
 import json
 import datetime
 from pathlib import Path
-from huggingface_hub import InferenceClient
+from huggingface_hub import InferenceClient, HfApi
+#from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import (
     HF_TOKEN, 
@@ -393,7 +394,7 @@ def rebuild_kb():
         return f"Error creating knowledge base: {str(e)}"
 
 def save_chat_history(history, conversation_id):
-    """Save chat history to a file"""
+    """Save chat history to a file and to HuggingFace dataset"""
     try:
         # Create directory if it doesn't exist
         os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
@@ -414,15 +415,44 @@ def save_chat_history(history, conversation_id):
         filename = f"{conversation_id}_{timestamp}.json"
         filepath = os.path.join(CHAT_HISTORY_PATH, filename)
         
-        # Save to file
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump({
-                "conversation_id": conversation_id,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "history": formatted_history
-            }, f, ensure_ascii=False, indent=2)
+        # Create chat history data
+        chat_data = {
+            "conversation_id": conversation_id,
+            "timestamp": datetime.datetime.now().isoformat(),
+            "history": formatted_history
+        }
         
-        print(f"Debug - Chat history saved to {filepath}")
+        # Save to local file
+        with open(filepath, 'w', encoding='utf-8') as f:
+            json.dump(chat_data, f, ensure_ascii=False, indent=2)
+        
+        print(f"Debug - Chat history saved locally to {filepath}")
+        
+        # Now upload to HuggingFace dataset
+        try:
+            from huggingface_hub import HfApi
+            
+            # Initialize the Hugging Face API client
+            api = HfApi(token=HF_TOKEN)
+            
+            # Target path in the dataset
+            dataset_chat_dir = "chat_histories"
+            target_path = f"{dataset_chat_dir}/{filename}"
+            
+            # Upload the file to the dataset
+            api.upload_file(
+                path_or_fileobj=filepath,
+                path_in_repo=target_path,
+                repo_id=DATASET_ID,
+                repo_type="dataset"
+            )
+            
+            print(f"Debug - Chat history uploaded to dataset at {target_path}")
+            
+        except Exception as e:
+            print(f"Warning - Failed to upload chat history to dataset: {str(e)}")
+            # Continue execution even if upload fails
+        
         return True
     except Exception as e:
         print(f"Error saving chat history: {str(e)}")
