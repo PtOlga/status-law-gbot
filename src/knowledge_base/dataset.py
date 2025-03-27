@@ -10,7 +10,7 @@ from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
 from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings  # Updated import
 
 class DatasetManager:
     def __init__(self, dataset_name="Rulga/status-law-knowledge-base", token: Optional[str] = None):

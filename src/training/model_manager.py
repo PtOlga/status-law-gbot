@@ -9,7 +9,7 @@ from typing import List, Dict, Any, Tuple, Optional
 import logging
 from huggingface_hub import HfApi, snapshot_download
 from transformers import AutoModelForCausalLM, AutoTokenizer
-from config.settings import MODEL_PATH, MODELS_REGISTRY_PATH, MODEL_CONFIG
+from config.settings import MODEL_PATH, MODELS_REGISTRY_PATH, MODELS, ACTIVE_MODEL
 
 logging.basicConfig(
     level=logging.INFO,
@@ -184,7 +184,7 @@ def get_model(
         (model, tokenizer, model_info)
     """
     try:
-        model_path = MODEL_CONFIG["training"]["fine_tuned_path"] if version else MODEL_CONFIG["training"]["base_model_path"]
+        model_path = ACTIVE_MODEL["training"]["fine_tuned_path"] if version else ACTIVE_MODEL["training"]["base_model_path"]
         
         tokenizer = AutoTokenizer.from_pretrained(
             model_path,
@@ -197,7 +197,7 @@ def get_model(
             device_map="auto" if device == "cuda" else None
         )
         
-        return model, tokenizer, MODEL_CONFIG
+        return model, tokenizer, ACTIVE_MODEL
         
     except Exception as e:
         logger.error(f"Error loading model: {str(e)}")
@@ -209,10 +209,10 @@ if __name__ == "__main__":
     
     # Register base model from config
     success, message = manager.register_model(
-        model_id=MODEL_CONFIG["id"].split("/")[-1],  # Extract model name from full HF path
-        version=MODEL_CONFIG["type"],
-        source=MODEL_CONFIG["id"],
-        description=MODEL_CONFIG["description"],
+        model_id=ACTIVE_MODEL["id"].split("/")[-1],  # Extract model name from full HF path
+        version=ACTIVE_MODEL["type"],
+        source=ACTIVE_MODEL["id"],
+        description=ACTIVE_MODEL["description"],
         is_active=True
     )
     print(message)
