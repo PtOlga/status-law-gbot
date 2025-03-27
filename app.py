@@ -811,28 +811,34 @@ with gr.Blocks() as demo:
             
             with gr.Row():
                 with gr.Column():
-                    gr.Markdown("""
-                    ### Training Parameters Guide
-                    
-                    **Number of Epochs**
-                    - What it means: How many times the model will see all training data
-                    - Higher = More learning but takes longer
-                    - Recommended: 3 for small datasets, 1 for large datasets
-                    
-                    **Batch Size**
-                    - What it means: How many examples processed at once
-                    - Higher = Faster training but needs more memory
-                    - Recommended: 4 for 16GB RAM, 8 for 32GB RAM
-                    
-                    **Learning Rate**
-                    - What it means: How quickly the model learns
-                    - Higher = Faster learning but may be less stable
-                    - Recommended: 2e-4 (0.0002) for most cases
-                    """)
-                    
                     epochs = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of Epochs")
                     batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
                     learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
+                    
+                    gr.Markdown("""
+                    <small>
+                    **Quick Parameter Guide:**
+                    
+                    **Epochs:**
+                    - Higher = Model learns more thoroughly
+                    - Lower = Faster training
+                    - Best for small datasets: 3-5
+                    - Best for large datasets: 1-2
+                    
+                    **Batch Size:**
+                    - Higher = Faster but needs more RAM
+                    - Lower = Slower but more stable
+                    - 4 = Good for 16GB RAM
+                    - 8 = Good for 32GB RAM
+                    
+                    **Learning Rate:**
+                    - Higher = Learns faster but may be unstable
+                    - Lower = Learns slower but more reliable
+                    - 2e-4 (0.0002) = Usually works best
+                    - 1e-4 = Safer choice for fine-tuning
+                    </small>
+                    """)
+                    
                     train_btn = gr.Button("Start Training", variant="primary")
                     training_output = gr.Textbox(label="Training Status", interactive=False)
 
