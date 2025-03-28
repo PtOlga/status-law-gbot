@@ -1,5 +1,5 @@
 """
-Модуль для дообучения языковой модели на основе собранных данных
+Module for fine-tuning a language model on collected data
 """
 
 import os
@@ -84,38 +84,38 @@ class FineTuner:
         try:
             logger.info(f"Загрузка модели {self.base_model_id}...")
             
-            # Загрузка токенизатора с использованием slow tokenizer
+            # Load tokenizer using slow tokenizer
             self.tokenizer = AutoTokenizer.from_pretrained(
                 self.base_model_id,
                 trust_remote_code=True,
-                use_fast=False  # Используем slow tokenizer
+                use_fast=False  # Using slow tokenizer
             )
             
-            # Специальные токены для диалогов
+            # Special tokens for dialogues
             special_tokens = {
                 "pad_token": "<PAD>",
                 "eos_token": "</s>",
                 "bos_token": "<s>",
-                "unk_token": "<unk>"  # Добавляем unknown token
+                "unk_token": "<unk>"  # Adding unknown token
             }
             
-            # Добавляем специальные токены, если их нет
+            # Add special tokens if they don't exist
             self.tokenizer.add_special_tokens({"additional_special_tokens": list(special_tokens.values())})
             
-            # Загрузка модели
+            # Load model
             self.model = AutoModelForCausalLM.from_pretrained(
                 self.base_model_id,
                 trust_remote_code=True,
                 device_map="auto" if self.device == "cuda" else None,
-                torch_dtype="auto"  # Автоматически выбираем оптимальный тип данных
+                torch_dtype="auto"  # Automatically choose optimal data type
             )
             
-            # Изменяем размер эмбеддингов для новых токенов
+            # Resize embeddings for new tokens
             self.model.resize_token_embeddings(len(self.tokenizer))
             
-            logger.info("Модель и токенизатор успешно загружены")
+            logger.info("Model and tokenizer loaded successfully")
         except Exception as e:
-            logger.error(f"Ошибка при загрузке модели: {str(e)}")
+            logger.error(f"Error loading model: {str(e)}")
             raise
     
     def setup_lora_config(
@@ -125,17 +125,17 @@ class FineTuner:
         lora_dropout: float = 0.05
     ) -> LoraConfig:
         """
-        Настройка конфигурации LoRA для эффективного дообучения
+        Setup LoRA configuration for efficient fine-tuning
         
         Args:
-            r: Ранг матриц LoRA
-            lora_alpha: Альфа параметр LoRA
-            lora_dropout: Вероятность dropout в LoRA слоях
+            r: Rank of LoRA matrices
+            lora_alpha: LoRA alpha parameter
+            lora_dropout: Dropout probability in LoRA layers
             
         Returns:
-            Конфигурация LoRA
+            LoRA configuration
         """
-        # Создаем конфигурацию LoRA
+        # Create LoRA configuration
         lora_config = LoraConfig(
             task_type=TaskType.CAUSAL_LM,
             r=r,
@@ -149,34 +149,34 @@ class FineTuner:
     
     def prepare_model_for_training(self):
         """
-        Подготовка модели к обучению с использованием LoRA
+        Prepare model for training using LoRA
         """
         if self.model is None:
             self.load_model_and_tokenizer()
         
-        # Настройка LoRA
+        # Setup LoRA
         lora_config = self.setup_lora_config()
         
-        # Применяем LoRA к модели
+        # Apply LoRA to model
         self.model = get_peft_model(self.model, lora_config)
         
-        # Вывод информации о параметрах
+        # Output parameter information
         trainable_params = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         all_params = sum(p.numel() for p in self.model.parameters())
-        logger.info(f"Обучаемых параметров: {trainable_params:,} из {all_params:,} ({trainable_params/all_params:.2%})")
+        logger.info(f"Trainable parameters: {trainable_params:,} of {all_params:,} ({trainable_params/all_params:.2%})")
     
     def tokenize_dataset(self, dataset):
         """
-        Токенизация датасета для обучения
+        Tokenize dataset for training
         
         Args:
-            dataset: Датасет для токенизации
+            dataset: Dataset to tokenize
             
         Returns:
-            Токенизированный датасет
+            Tokenized dataset
         """
         def tokenize_function(examples):
-            # Форматируем диалоги в единую строку
+            # Format dialogues into single string
             texts = []
             for dialog in examples["messages"]:
                 text = ""
@@ -187,7 +187,7 @@ class FineTuner:
                         text += f"Assistant: {message['content']}\n"
                 texts.append(text)
             
-            # Токенизируем тексты
+            # Tokenize texts
             tokenized = self.tokenizer(
                 texts,
                 padding="max_length",
@@ -198,7 +198,7 @@ class FineTuner:
             
             return tokenized
         
-        # Применяем функцию токенизации
+        # Apply tokenization function
         tokenized_dataset = dataset.map(
             tokenize_function,
             batched=True,
@@ -206,6 +206,75 @@ class FineTuner:
         )
         
         return tokenized_dataset
+    
+    # Добавить этот метод в класс fine_tuner.py или в функции модуля:
+
+def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_rating=4):
+    """
+    Fine-tune model using annotated QA pairs
+    
+    Args:
+        epochs: Number of training epochs
+        batch_size: Batch size for training
+        learning_rate: Learning rate
+        min_rating: Minimum average rating for including examples
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        import tempfile
+        import os
+        from src.analytics.chat_evaluator import ChatEvaluator
+        from config.settings import HF_TOKEN, DATASET_ID, CHAT_HISTORY_PATH
+        
+        # Create evaluator
+        evaluator = ChatEvaluator(
+            hf_token=HF_TOKEN,
+            dataset_id=DATASET_ID,
+            chat_history_path=CHAT_HISTORY_PATH
+        )
+        
+        # Create temporary file for training data
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.jsonl', delete=False) as temp_file:
+            temp_path = temp_file.name
+        
+        # Export high-quality examples
+        success, message = evaluator.export_training_data(temp_path, min_rating)
+        
+        if not success:
+            return False, f"Failed to export training data: {message}"
+        
+        # Count examples
+        with open(temp_path, 'r') as f:
+            example_count = sum(1 for _ in f)
+        
+        if example_count == 0:
+            return False, "No high-quality examples found for fine-tuning"
+        
+        # Run actual fine-tuning using the export file
+        from src.training.fine_tuner import finetune_from_file
+        
+        success, message = finetune_from_file(
+            training_file=temp_path,
+            epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate
+        )
+        
+        # Clean up temporary file
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+        
+        if success:
+            return True, f"Successfully fine-tuned model with {example_count} annotated examples: {message}"
+        else:
+            return False, f"Fine-tuning failed: {message}"
+        
+    except Exception as e:
+        return False, f"Error during fine-tuning from annotations: {str(e)}"
     
     def train(
         self,
@@ -218,49 +287,49 @@ class FineTuner:
         save_strategy: str = "epoch"
     ) -> Tuple[bool, str]:
         """
-        Запуск процесса дообучения модели
+        Start model fine-tuning process
         
         Args:
-            training_data_path: Путь к данным для обучения (если None, данные будут подготовлены автоматически)
-            num_train_epochs: Количество эпох обучения
-            per_device_train_batch_size: Размер батча на устройство
-            gradient_accumulation_steps: Количество шагов накопления градиента
-            learning_rate: Скорость обучения
-            logging_steps: Частота логирования
-            save_strategy: Стратегия сохранения модели
+            training_data_path: Path to training data (if None, data will be prepared automatically)
+            num_train_epochs: Number of training epochs
+            per_device_train_batch_size: Batch size per device
+            gradient_accumulation_steps: Number of gradient accumulation steps
+            learning_rate: Learning rate
+            logging_steps: Logging frequency
+            save_strategy: Model saving strategy
             
         Returns:
-            (успех, сообщение)
+            (success, message)
         """
         try:
-            # Подготовка данных для обучения, если не указан путь
+            # Prepare training data if path not specified
             if training_data_path is None:
                 training_data_path = self.prepare_training_data()
                 temp_data = True
             else:
                 temp_data = False
             
-            # Загрузка модели и токенизатора, если не загружены
+            # Load model and tokenizer if not loaded
             if self.model is None or self.tokenizer is None:
                 self.load_model_and_tokenizer()
             
-            # Подготовка модели для обучения
+            # Prepare model for training
             self.prepare_model_for_training()
             
-            # Загрузка датасета
+            # Load dataset
             dataset = load_dataset("json", data_files=training_data_path, split="train")
-            logger.info(f"Загружено {len(dataset)} примеров из {training_data_path}")
+            logger.info(f"Loaded {len(dataset)} examples from {training_data_path}")
             
-            # Токенизация датасета
+            # Tokenize dataset
             tokenized_dataset = self.tokenize_dataset(dataset)
             
-            # Создание колатора данных
+            # Create data collator
             data_collator = DataCollatorForLanguageModeling(
                 tokenizer=self.tokenizer,
                 mlm=False
             )
             
-            # Настройка аргументов обучения
+            # Setup training arguments
             training_args = TrainingArguments(
                 output_dir=self.output_dir,
                 num_train_epochs=num_train_epochs,
@@ -278,7 +347,7 @@ class FineTuner:
                 load_best_model_at_end=True
             )
             
-            # Создание тренера
+            # Create trainer
             trainer = Trainer(
                 model=self.model,
                 args=training_args,
@@ -287,23 +356,23 @@ class FineTuner:
                 tokenizer=self.tokenizer
             )
             
-            # Запуск обучения
-            logger.info("Начало обучения модели...")
+            # Start training
+            logger.info("Starting model training...")
             trainer.train()
             
-            # Сохранение модели
-            logger.info(f"Сохранение обученной модели в {self.output_dir}")
+            # Save model
+            logger.info(f"Saving trained model to {self.output_dir}")
             trainer.save_model(self.output_dir)
             self.tokenizer.save_pretrained(self.output_dir)
             
-            # Удаляем временный файл, если он был создан
+            # Remove temporary file if created
             if temp_data and os.path.exists(training_data_path):
                 os.remove(training_data_path)
             
-            return True, f"Модель успешно обучена и сохранена в {self.output_dir}"
+            return True, f"Model successfully trained and saved to {self.output_dir}"
         except Exception as e:
-            logger.error(f"Ошибка в процессе обучения: {str(e)}")
-            return False, f"Ошибка в процессе обучения: {str(e)}"
+            logger.error(f"Error during training: {str(e)}")
+            return False, f"Error during training: {str(e)}"
     
     def upload_model_to_hub(
         self, 
@@ -312,24 +381,24 @@ class FineTuner:
         token: Optional[str] = None
     ) -> Tuple[bool, str]:
         """
-        Загрузка обученной модели на Hugging Face Hub
+        Upload trained model to Hugging Face Hub
         
         Args:
-            repo_id: Идентификатор репозитория на Hugging Face Hub
-            private: Флаг приватности репозитория
-            token: Токен доступа к Hugging Face Hub
+            repo_id: Repository ID on Hugging Face Hub
+            private: Repository privacy flag
+            token: Hugging Face Hub access token
             
         Returns:
-            (успех, сообщение)
+            (success, message)
         """
         try:
             if not os.path.exists(os.path.join(self.output_dir, "pytorch_model.bin")):
-                return False, "Обученная модель не найдена. Сначала выполните обучение."
+                return False, "Trained model not found. Please train the model first."
             
-            # Инициализация API
+            # Initialize API
             api = HfApi(token=token)
             
-            # Загрузка модели на Hub
+            # Upload model to Hub
             api.create_repo(repo_id=repo_id, private=private, repo_type="model", exist_ok=True)
             api.upload_folder(
                 folder_path=self.output_dir,
@@ -337,35 +406,35 @@ class FineTuner:
                 repo_type="model"
             )
             
-            return True, f"Модель успешно загружена на Hugging Face Hub: {repo_id}"
+            return True, f"Model successfully uploaded to Hugging Face Hub: {repo_id}"
         except Exception as e:
-            return False, f"Ошибка при загрузке модели на Hub: {str(e)}"
+            return False, f"Error uploading model to Hub: {str(e)}"
 
 def finetune_from_chat_history(epochs: int = 3) -> Tuple[bool, str]:
     """
-    Функция для запуска процесса дообучения на основе истории чатов
+    Function to start fine-tuning process based on chat history
     
     Args:
-        epochs: Количество эпох обучения
+        epochs: Number of training epochs
         
     Returns:
-        (успех, сообщение)
+        (success, message)
     """
-    # Анализ чатов и подготовка данных
+    # Analyze chats and prepare data
     analyzer = ChatAnalyzer()
     report = analyzer.generate_analytics_report()
     
-    # Проверка наличия достаточного количества данных
+    # Check if there's enough data
     if report["qa_pairs_count"] < 10:
-        return False, f"Недостаточно данных для дообучения. Найдено всего {report['qa_pairs_count']} пар вопрос-ответ."
+        return False, f"Insufficient data for fine-tuning. Only {report['qa_pairs_count']} QA pairs found."
     
-    # Создание и запуск процесса дообучения
+    # Create and start fine-tuning process
     tuner = FineTuner()
     success, message = tuner.train(num_train_epochs=epochs)
     
     return success, message
 
 if __name__ == "__main__":
-    # Пример использования
+    # Usage example
     success, message = finetune_from_chat_history()
     print(message)

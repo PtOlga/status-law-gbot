@@ -4,7 +4,6 @@ import json
 import datetime
 from pathlib import Path
 from huggingface_hub import InferenceClient, HfApi
-#from huggingface_hub import InferenceClient
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import (
     HF_TOKEN, 
@@ -23,6 +22,15 @@ from web.training_interface import (
     register_model_action,
     start_finetune_action
 )
+from web.evaluation_interface import (
+    get_evaluation_status,
+    get_qa_pairs_dataframe,
+    load_qa_pair_for_evaluation,
+    save_evaluation,
+    generate_evaluation_report_html,
+    export_training_data_action
+)
+from src.analytics.chat_evaluator import ChatEvaluator
 
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
@@ -81,6 +89,11 @@ ERROR_LOGS_PATH = os.path.join(os.path.dirname(__file__), "error_logs")
 client = None
 context_store = {}
 fallback_model_attempted = False
+chat_evaluator = ChatEvaluator(
+    hf_token=HF_TOKEN,
+    dataset_id=DATASET_ID,
+    chat_history_path=CHAT_HISTORY_PATH
+)
 
 print(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
 
@@ -625,6 +638,73 @@ def save_parameters(model_key, max_len, temp, top_p_val, rep_pen):
     except Exception as e:
         return f"Error saving parameters: {str(e)}"
 
+def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_rating=4):
+    """
+    Fine-tune model using annotated QA pairs
+    
+    Args:
+        epochs: Number of training epochs
+        batch_size: Batch size for training
+        learning_rate: Learning rate
+        min_rating: Minimum average rating for including examples
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        import tempfile
+        import os
+        from src.analytics.chat_evaluator import ChatEvaluator
+        from config.settings import HF_TOKEN, DATASET_ID, CHAT_HISTORY_PATH
+        
+        # Create evaluator
+        evaluator = ChatEvaluator(
+            hf_token=HF_TOKEN,
+            dataset_id=DATASET_ID,
+            chat_history_path=CHAT_HISTORY_PATH
+        )
+        
+        # Create temporary file for training data
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.jsonl', delete=False) as temp_file:
+            temp_path = temp_file.name
+        
+        # Export high-quality examples
+        success, message = evaluator.export_training_data(temp_path, min_rating)
+        
+        if not success:
+            return False, f"Failed to export training data: {message}"
+        
+        # Count examples
+        with open(temp_path, 'r') as f:
+            example_count = sum(1 for _ in f)
+        
+        if example_count == 0:
+            return False, "No high-quality examples found for fine-tuning"
+        
+        # Run actual fine-tuning using the export file
+        from src.training.fine_tuner import finetune_from_file
+        
+        success, message = finetune_from_file(
+            training_file=temp_path,
+            epochs=epochs,
+            batch_size=batch_size,
+            learning_rate=learning_rate
+        )
+        
+        # Clean up temporary file
+        try:
+            os.unlink(temp_path)
+        except:
+            pass
+        
+        if success:
+            return True, f"Successfully fine-tuned model with {example_count} annotated examples: {message}"
+        else:
+            return False, f"Fine-tuning failed: {message}"
+        
+    except Exception as e:
+        return False, f"Error during fine-tuning from annotations: {str(e)}"
+
 def initialize_app():
     """Initialize app with user preferences"""
     global client, ACTIVE_MODEL
@@ -810,14 +890,27 @@ with gr.Blocks() as demo:
             gr.Markdown("### Model Training Interface")
             
             with gr.Row():
-                with gr.Column():
-                    epochs = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of Epochs")
-                    batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
-                    learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
+                with gr.Column(scale=1):
+                    training_tabs = gr.Tabs()
                     
-                    train_btn = gr.Button("Start Training", variant="primary")
-                    training_output = gr.Textbox(label="Training Status", interactive=False)
-                     
+                    with training_tabs:
+                        with gr.TabItem("Regular Training"):
+                            epochs = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of Epochs")
+                            batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
+                            learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
+                            
+                            train_btn = gr.Button("Start Training", variant="primary")
+                            training_output = gr.Textbox(label="Training Status", interactive=False)
+                        
+                        with gr.TabItem("Train from Annotations"):
+                            annot_epochs = gr.Slider(minimum=1, maximum=10, value=3, step=1, label="Number of Epochs")
+                            annot_batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
+                            annot_learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
+                            annot_min_rating = gr.Slider(minimum=1, maximum=5, value=4, step=0.5, label="Minimum Rating for Training")
+                            
+                            annot_train_btn = gr.Button("Start Training from Annotations", variant="primary")
+                            annot_training_output = gr.Textbox(label="Training Status", interactive=False)
+                    
                     gr.Markdown("""
                     <small>
                                         
@@ -834,10 +927,8 @@ with gr.Blocks() as demo:
                     2e-4 (0.0002) = Usually works best -> 1e-4 = Safer choice for fine-tuning
                     </small>
                     """)
-                    
 
-
-                with gr.Column():
+                with gr.Column(scale=1):
                     analysis_btn = gr.Button("Generate Chat Analysis")
                     analysis_output = gr.Markdown()
             
@@ -846,10 +937,139 @@ with gr.Blocks() as demo:
                 inputs=[epochs, batch_size, learning_rate],
                 outputs=[training_output]
             )
+            
+            # Function to handle training from annotations
+            def start_annotation_finetune(epochs, batch_size, learning_rate, min_rating):
+                """Wrapper function to start fine-tuning from annotations"""
+                success, message = finetune_from_annotations(
+                    epochs=epochs,
+                    batch_size=batch_size,
+                    learning_rate=learning_rate,
+                    min_rating=min_rating
+                )
+                return message
+            
+            annot_train_btn.click(
+                start_annotation_finetune,
+                inputs=[annot_epochs, annot_batch_size, annot_learning_rate, annot_min_rating],
+                outputs=[annot_training_output]
+            )
+            
             analysis_btn.click(
                 generate_chat_analysis,
                 inputs=[],
                 outputs=[analysis_output]
+            )
+
+        with gr.Tab("Chat Evaluation"):
+            gr.Markdown("### Evaluation of Chat Responses")
+            
+            with gr.Row():
+                with gr.Column(scale=1):
+                    evaluation_status = gr.Markdown(get_evaluation_status(chat_evaluator))
+                    refresh_status_btn = gr.Button("Refresh Status")
+                    
+                    gr.Markdown("### Evaluation Metrics")
+                    evaluation_report = gr.HTML(generate_evaluation_report_html(chat_evaluator))
+                    refresh_report_btn = gr.Button("Refresh Report")
+                    
+                    gr.Markdown("### Export for Training")
+                    with gr.Row():
+                        min_rating = gr.Slider(
+                            minimum=1, 
+                            maximum=5, 
+                            value=4, 
+                            step=0.5, 
+                            label="Minimum Average Rating"
+                        )
+                        export_path = gr.Textbox(
+                            label="Export File Path (optional)",
+                            placeholder="Leave empty for default path"
+                        )
+                    export_btn = gr.Button("Export Annotated Data", variant="primary")
+                    export_status = gr.Textbox(label="Export Status", interactive=False)
+                    
+                with gr.Column(scale=2):
+                    show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
+                    qa_table = gr.DataFrame(get_qa_pairs_dataframe(chat_evaluator))
+                    
+                    gr.Markdown("### Select Conversation to Evaluate")
+                    selected_conversation = gr.Textbox(label="Conversation ID", placeholder="Select from table above")
+                    load_btn = gr.Button("Load Conversation", variant="primary")
+                    
+                    gr.Markdown("### Evaluate Response")
+                    question_display = gr.Textbox(label="User Question", interactive=False)
+                    original_answer = gr.TextArea(label="Original Bot Answer", interactive=False)
+                    improved_answer = gr.TextArea(label="Improved Answer (Gold Standard)", interactive=True)
+                    
+                    gr.Markdown("### Quality Ratings (1-5)")
+                    with gr.Row():
+                        accuracy = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Factual Accuracy")
+                        completeness = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Completeness")
+                    with gr.Row():
+                        relevance = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Relevance")
+                        clarity = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Clarity")
+                    legal_correctness = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Legal Correctness")
+                    
+                    notes = gr.TextArea(label="Evaluator Notes", placeholder="Add your notes about this response...")
+                    save_btn = gr.Button("Save Evaluation", variant="primary")
+                    evaluation_status_msg = gr.Textbox(label="Status", interactive=False)
+            
+            # Add event handlers
+            refresh_status_btn.click(
+                fn=get_evaluation_status,
+                inputs=[],
+                outputs=[evaluation_status],
+                kwargs={"evaluator": chat_evaluator}
+            )
+            
+            refresh_report_btn.click(
+                fn=generate_evaluation_report_html,
+                inputs=[],
+                outputs=[evaluation_report],
+                kwargs={"evaluator": chat_evaluator}
+            )
+            
+            show_evaluated.change(
+                fn=get_qa_pairs_dataframe,
+                inputs=[show_evaluated],
+                outputs=[qa_table],
+                kwargs={"evaluator": chat_evaluator}
+            )
+            
+            # Table selection to conversation ID textbox
+            qa_table.select(
+                fn=lambda df, evt: evt.value[0] if evt and evt.value and len(evt.value) > 0 else "",
+                inputs=[qa_table],
+                outputs=[selected_conversation]
+            )
+            
+            # Load conversation for evaluation
+            load_btn.click(
+                fn=load_qa_pair_for_evaluation,
+                inputs=[selected_conversation],
+                outputs=[question_display, original_answer, improved_answer, 
+                        accuracy, completeness, relevance, clarity, legal_correctness, notes],
+                kwargs={"evaluator": chat_evaluator}
+            )
+            
+            # Save evaluation
+            save_btn.click(
+                fn=save_evaluation,
+                inputs=[
+                    selected_conversation, question_display, original_answer, improved_answer,
+                    accuracy, completeness, relevance, clarity, legal_correctness, notes
+                ],
+                outputs=[evaluation_status_msg],
+                kwargs={"evaluator": chat_evaluator}
+            )
+            
+            # Export training data
+            export_btn.click(
+                fn=export_training_data_action,
+                inputs=[min_rating, export_path],
+                outputs=[export_status],
+                kwargs={"evaluator": chat_evaluator}
             )
     
     # Model change handler
