@@ -1017,24 +1017,21 @@ with gr.Blocks() as demo:
             
             # Add event handlers
             refresh_status_btn.click(
-                fn=get_evaluation_status,
+                fn=lambda: get_evaluation_status(chat_evaluator),
                 inputs=[],
-                outputs=[evaluation_status],
-                kwargs={"evaluator": chat_evaluator}
+                outputs=[evaluation_status]
             )
             
             refresh_report_btn.click(
-                fn=generate_evaluation_report_html,
+                fn=lambda: generate_evaluation_report_html(chat_evaluator),
                 inputs=[],
-                outputs=[evaluation_report],
-                kwargs={"evaluator": chat_evaluator}
+                outputs=[evaluation_report]
             )
             
             show_evaluated.change(
-                fn=get_qa_pairs_dataframe,
+                fn=lambda x: get_qa_pairs_dataframe(chat_evaluator, x),
                 inputs=[show_evaluated],
-                outputs=[qa_table],
-                kwargs={"evaluator": chat_evaluator}
+                outputs=[qa_table]
             )
             
             # Table selection to conversation ID textbox
@@ -1046,30 +1043,27 @@ with gr.Blocks() as demo:
             
             # Load conversation for evaluation
             load_btn.click(
-                fn=load_qa_pair_for_evaluation,
+                fn=lambda x: load_qa_pair_for_evaluation(x, chat_evaluator),
                 inputs=[selected_conversation],
                 outputs=[question_display, original_answer, improved_answer, 
-                        accuracy, completeness, relevance, clarity, legal_correctness, notes],
-                kwargs={"evaluator": chat_evaluator}
+                        accuracy, completeness, relevance, clarity, legal_correctness, notes]
             )
             
             # Save evaluation
             save_btn.click(
-                fn=save_evaluation,
+                fn=lambda *args: save_evaluation(*args, evaluator=chat_evaluator),
                 inputs=[
                     selected_conversation, question_display, original_answer, improved_answer,
                     accuracy, completeness, relevance, clarity, legal_correctness, notes
                 ],
-                outputs=[evaluation_status_msg],
-                kwargs={"evaluator": chat_evaluator}
+                outputs=[evaluation_status_msg]
             )
             
             # Export training data
             export_btn.click(
-                fn=export_training_data_action,
+                fn=lambda min_r, path: export_training_data_action(min_r, path, chat_evaluator),
                 inputs=[min_rating, export_path],
-                outputs=[export_status],
-                kwargs={"evaluator": chat_evaluator}
+                outputs=[export_status]
             )
     
     # Model change handler
