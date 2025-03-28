@@ -221,14 +221,14 @@ def generate_evaluation_report_html(evaluator: ChatEvaluator) -> str:
     
     return html
 
-def export_training_data_action(evaluator: ChatEvaluator, min_rating: int, output_file: str) -> str:
+def export_training_data_action(min_rating: int, output_file: str, evaluator: ChatEvaluator) -> str:
     """
     Action for exporting training data
     
     Args:
-        evaluator: ChatEvaluator instance
         min_rating: Minimum average rating (1-5)
         output_file: Output file path
+        evaluator: ChatEvaluator instance
         
     Returns:
         Status message
@@ -238,3 +238,79 @@ def export_training_data_action(evaluator: ChatEvaluator, min_rating: int, outpu
     
     success, message = evaluator.export_training_data(output_file, min_rating)
     return message
+
+
+
+# Create a Gradio interface
+with gr.Blocks() as interface:
+    # Load the ChatEvaluator
+    chat_evaluator = ChatEvaluator()
+    
+    # Evaluation status
+    status = get_evaluation_status(chat_evaluator)
+    status_display = gr.Markdown(value=status)
+    
+    # QA pairs table
+    show_evaluated = gr.Checkbox(label="Show evaluated pairs", value=False)
+    limit = gr.Slider(label="Number of pairs to show", minimum=1, maximum=100, value=50)
+    qa_pairs_table = gr.DataFrame(value=get_qa_pairs_dataframe(chat_evaluator, show_evaluated.value, limit.value))
+    
+    # QA pair evaluation
+    conversation_id = gr.Textbox(label="Conversation ID")
+    load_btn = gr.Button("Load QA Pair")
+    question = gr.Textbox(label="Question", interactive=False)
+    original_answer = gr.Textbox(label="Original Answer", interactive=False)
+    improved_answer = gr.Textbox(label="Improved Answer")
+    accuracy = gr.Slider(label="Accuracy", minimum=1, maximum=5, value=3)
+    completeness = gr.Slider(label="Completeness", minimum=1, maximum=5, value=3)
+    relevance = gr.Slider(label="Relevance", minimum=1, maximum=5, value=3)
+    clarity = gr.Slider(label="Clarity", minimum=1, maximum=5, value=3)
+    legal_correctness = gr.Slider(label="Legal Correctness", minimum=1, maximum=5, value=3)
+    notes = gr.Textbox(label="Notes")
+    save_btn = gr.Button("Save Evaluation")
+    
+    # Evaluation report
+    report_html = generate_evaluation_report_html(chat_evaluator)
+    report_display = gr.HTML(value=report_html)
+    
+    # Export training data
+    min_rating = gr.Slider(label="Minimum Average Rating", minimum=1, maximum=5, value=3)
+    export_path = gr.Textbox(label="Output File Path")
+    export_btn = gr.Button("Export Training Data")
+    export_status = gr.Textbox(label="Export Status", interactive=False)
+    
+    # Event listeners
+    load_btn.click(
+        fn=lambda cid: load_qa_pair_for_evaluation(chat_evaluator, cid),
+        inputs=[conversation_id],
+        outputs=[question, original_answer, improved_answer, accuracy, completeness, relevance, clarity, legal_correctness, notes]
+    )
+    
+    save_btn.click(
+        fn=lambda cid, q, oa, ia, acc, comp, rel, cl, lc, n: save_evaluation(chat_evaluator, cid, q, oa, ia, acc, comp, rel, cl, lc, n),
+        inputs=[conversation_id, question, original_answer, improved_answer, accuracy, completeness, relevance, clarity, legal_correctness, notes],
+        outputs=[save_btn]
+    )
+    
+    show_evaluated.change(
+        fn=lambda se, l: get_qa_pairs_dataframe(chat_evaluator, se, l),
+        inputs=[show_evaluated, limit],
+        outputs=[qa_pairs_table]
+    )
+    
+    limit.change(
+        fn=lambda se, l: get_qa_pairs_dataframe(chat_evaluator, se, l),
+        inputs=[show_evaluated, limit],
+        outputs=[qa_pairs_table]
+    )
+    
+    # Export training data
+    export_btn.click(
+        fn=lambda min_r, path: export_training_data_action(min_r, path, chat_evaluator),
+        inputs=[min_rating, export_path],
+        outputs=[export_status]
+    )
+
+# Launch the interface
+interface.launch()
+
