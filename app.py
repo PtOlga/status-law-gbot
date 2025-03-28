@@ -821,16 +821,16 @@ with gr.Blocks() as demo:
                     gr.Markdown("""
                     <small>
                                         
-                    **Epochs:** 
+                    **Epochs:**   
                     Lower = Faster training  -> Higher = Model learns more thoroughly   
                     Best for small datasets: 3-5 -> Best for large datasets: 1-2
                                                            
                     **Batch Size:**  
-                    Lower = Slower but more stable -> Higher = Faster but needs more RAM 
+                    Lower = Slower but more stable -> Higher = Faster but needs more RAM   
                     4 = Good for 16GB RAM -> 8 = Good for 32GB RAM
                             
-                    **Learning Rate:** 
-                    Lower = Learns slower but more reliable -> Higher = Learns faster but may be unstable
+                    **Learning Rate:**   
+                    Lower = Learns slower but more reliable -> Higher = Learns faster but may be unstable   
                     2e-4 (0.0002) = Usually works best -> 1e-4 = Safer choice for fine-tuning
                     </small>
                     """)
