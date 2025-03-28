@@ -815,32 +815,24 @@ with gr.Blocks() as demo:
                     batch_size = gr.Slider(minimum=1, maximum=32, value=4, step=1, label="Batch Size")
                     learning_rate = gr.Slider(minimum=1e-6, maximum=1e-3, value=2e-4, label="Learning Rate")
                     
+                    train_btn = gr.Button("Start Training", variant="primary")
+                    training_output = gr.Textbox(label="Training Status", interactive=False)
+                     
                     gr.Markdown("""
                     <small>
-                    **Quick Parameter Guide:**
-                    
-                    **Epochs:**
-                    - Higher = Model learns more thoroughly
-                    - Lower = Faster training
-                    - Best for small datasets: 3-5
-                    - Best for large datasets: 1-2
-                    
-                    **Batch Size:**
-                    - Higher = Faster but needs more RAM
-                    - Lower = Slower but more stable
-                    - 4 = Good for 16GB RAM
-                    - 8 = Good for 32GB RAM
-                    
-                    **Learning Rate:**
-                    - Higher = Learns faster but may be unstable
-                    - Lower = Learns slower but more reliable
-                    - 2e-4 (0.0002) = Usually works best
-                    - 1e-4 = Safer choice for fine-tuning
+                                        
+                    **Epochs:** (- Higher = Model learns more thoroughly)   (- Best for small datasets: 3-5)                 
+                                (- Lower = Faster training              )   (- Best for large datasets: 1-2)
+                                                           
+                    **Batch Size:**  (- Higher = Faster but needs more RAM) (- 4 = Good for 16GB RAM)
+                                     (- Lower = Slower but more stable    ) (- 8 = Good for 32GB RAM)
+                            
+                    **Learning Rate:** (- Higher = Learns faster but may be unstable) (- 2e-4 (0.0002) = Usually works best )
+                                       (- Lower = Learns slower but more reliable   ) (- 1e-4 = Safer choice for fine-tuning)
                     </small>
                     """)
                     
-                    train_btn = gr.Button("Start Training", variant="primary")
-                    training_output = gr.Textbox(label="Training Status", interactive=False)
+
 
                 with gr.Column():
                     analysis_btn = gr.Button("Generate Chat Analysis")
