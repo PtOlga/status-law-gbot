@@ -9,6 +9,18 @@ status-law-knowledge-base/chat_history/
 chat_history/
 *.json
 
+# Training and model files
+models/fine_tuned/
+models/registry.json
+training_output/
+*.bin
+*.pt
+*.pth
+*.ckpt
+wandb/
+runs/
+tensorboard/
+
 # Hugging Face specific
 .huggingface/
 
