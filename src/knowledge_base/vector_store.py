@@ -3,7 +3,7 @@ import tempfile
 import shutil
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_huggingface import HuggingFaceEmbeddings  # новый импорт
 from src.knowledge_base.loader import load_documents
 from config.settings import VECTOR_STORE_PATH, EMBEDDING_MODEL, HF_TOKEN
 from config.constants import CHUNK_SIZE, CHUNK_OVERLAP

@@ -10,7 +10,7 @@ from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
 from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL, DATASET_ID, CHAT_HISTORY_PATH
-from langchain_community.embeddings import HuggingFaceEmbeddings  # Updated import
+from langchain_huggingface import HuggingFaceEmbeddings  # новый импорт
 import logging
 
 # Настройка логирования
