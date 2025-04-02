@@ -9,11 +9,12 @@ if not HF_TOKEN:
 API_CONFIG = {
     "inference_endpoint": os.getenv("HF_INFERENCE_ENDPOINT", "https://api-inference.huggingface.co"),
     "token": HF_TOKEN,
-    "is_paid_tier": True,  # или False в зависимости от вашего плана
+    "is_paid_tier": True,
     "timeout": 30,
     "headers": {
         "X-Use-Cache": "false",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {HF_TOKEN}"  # явно указываем авторизацию
     }
 }
 
