@@ -340,8 +340,9 @@ def respond(
         import uuid
         conversation_id = str(uuid.uuid4())
     
-    # Add explicit language instruction
-    enhanced_system_message = system_message + f"\nCRITICAL: You MUST respond in the EXACT SAME language as this user message: {message}"
+    # Add explicit language instruction at the very beginning of system message
+    language_instruction = f"CRITICAL INSTRUCTION: This user message is the source of truth for response language. You MUST respond in EXACTLY the same language as: {message}\n\n"
+    enhanced_system_message = language_instruction + system_message
     
     messages = [{"role": "system", "content": enhanced_system_message}]
     
