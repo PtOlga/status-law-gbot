@@ -82,7 +82,7 @@ def get_qa_pairs_dataframe(evaluator: ChatEvaluator, show_evaluated: bool = Fals
     # Return empty DataFrame if no pairs
     return pd.DataFrame(columns=["ID", "Question", "Answer", "Evaluated"])
 
-def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) -> Tuple[str, str, str, Dict, str]:
+def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) -> Tuple[str, str, str, int, int, int, int, int, str]:
     """
     Load a QA pair for evaluation
     
@@ -91,7 +91,8 @@ def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) 
         evaluator: ChatEvaluator instance
         
     Returns:
-        Tuple of (question, original_answer, improved_answer, existing_ratings, notes)
+        Tuple of (question, original_answer, improved_answer, accuracy, completeness, 
+                 relevance, clarity, legal_correctness, notes)
     """
     # Get all QA pairs
     qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=1000)
@@ -106,14 +107,27 @@ def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) 
             annotation = evaluator.get_annotation_by_conversation_id(conversation_id)
             
             if annotation:
-                existing_ratings = annotation.get("ratings", {})
+                ratings = annotation.get("ratings", {})
                 improved_answer = annotation.get("improved_answer", original_answer)
                 notes = annotation.get("notes", "")
-                return question, original_answer, improved_answer, existing_ratings, notes
+                
+                # Get individual ratings with default value of 3
+                accuracy = ratings.get("accuracy", 3)
+                completeness = ratings.get("completeness", 3)
+                relevance = ratings.get("relevance", 3)
+                clarity = ratings.get("clarity", 3)
+                legal_correctness = ratings.get("legal_correctness", 3)
+                
+                return (question, original_answer, improved_answer, 
+                        accuracy, completeness, relevance, clarity, 
+                        legal_correctness, notes)
             
-            return question, original_answer, original_answer, {}, ""
+            # Return default values for new evaluation
+            return (question, original_answer, original_answer, 
+                    3, 3, 3, 3, 3, "")  # Default rating of 3 for all criteria
     
-    return "", "", "", {}, ""
+    # Return empty values if conversation not found
+    return ("", "", "", 3, 3, 3, 3, 3, "")
 
 def save_evaluation(
     evaluator: ChatEvaluator,
