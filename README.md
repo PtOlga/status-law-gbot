@@ -26,7 +26,11 @@ Status Law Assistant is a smart chatbot that answers user questions about Status
 - Customizable text generation parameters (temperature, token count, etc.)
 - Model switching with fallback mechanism
 - Fine-tuning capabilities based on chat history
-- Multiple model support (Llama 2, Zephyr)
+- Multiple model support:
+  - Llama 2 7B Chat: Meta's general-purpose model optimized for chat
+  - Zephyr 7B: State-of-the-art model with strong performance
+  - Mistral 7B Instruct v0.2: Advanced model with superior multilingual capabilities
+  - XGLM 7.5B: Specialized model for cross-lingual generation with 30+ language support
 
 ## 🚀 Technologies
 
