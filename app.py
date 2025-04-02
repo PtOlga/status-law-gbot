@@ -279,6 +279,13 @@ def get_context(message, conversation_id):
     try:
         # Extract context
         context_docs = vector_store.similarity_search(message, k=3)
+        # Add debug logging
+        print(f"\nDebug - Query: {message}")
+        for i, doc in enumerate(context_docs):
+            print(f"\nDebug - Context {i+1}:")
+            print(f"Source: {doc.metadata.get('source', 'unknown')}")
+            print(f"Content: {doc.page_content[:200]}...")
+        
         context_text = "\n\n".join([f"From {doc.metadata.get('source', 'unknown')}: {doc.page_content}" for doc in context_docs])
         
         # Save context for this conversation
