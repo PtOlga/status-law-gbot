@@ -3,7 +3,7 @@ URLS = [
      "https://status.law",
     "https://status.law/about",
     "https://status.law/careers",  
-    "https://status.law/tariffs-for-services-of-protection-against-extradition",
+    "https://status.law/tariffs-for-services-against-extradition-en",
     "https://status.law/challenging-sanctions",
     "https://status.law/law-firm-contact-legal-protection", 
     "https://status.law/cross-border-banking-legal-issues", 
