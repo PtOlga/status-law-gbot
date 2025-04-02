@@ -336,8 +336,13 @@ def detect_language(text):
             
         lang = detect(text)
         
-        # Validate detected language
-        supported_langs = ["en", "ru", "uk", "de", "fr"]  # Add your supported languages
+        # Validate detected language - now including Asian languages
+        supported_langs = [
+            "en", "ru", "uk", "de", "fr",  # European
+            "sv", "lt", "lv", "et", "fi",  # Nordic/Baltic
+            "zh", "ja", "ko",              # Asian
+            "ar", "fa", "he"               # Middle Eastern
+        ]
         return lang if lang in supported_langs else "en"
         
     except Exception as e:
