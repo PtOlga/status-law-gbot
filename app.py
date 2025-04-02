@@ -356,20 +356,12 @@ def respond(
 ):
     """Generate response with proper error handling"""
     try:
-        # Initialize response variables
-        bot_response = ""
-        error_occurred = False
-        
-        # --- Language Detection ---
-        user_language = language_processor.detect_language(message)
-        lang_instruction = language_processor.get_language_instruction(user_language, message)
-        
         # --- API Request ---
         response = client.chat_completion(
             messages=[
                 {"role": "system", "content": system_message},
                 *history,
-                {"role": "user", "content": lang_instruction}
+                {"role": "user", "content": message}
             ],
             max_tokens=max_tokens,
             temperature=temperature,
