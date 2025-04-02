@@ -82,16 +82,21 @@ class ChatEvaluator:
         chat_data = self.get_chat_history()
         qa_pairs = []
         
+        print(f"Debug - Processing {len(chat_data)} chat histories")  # Debug print
+        
         for chat in chat_data:
             conversation_id = chat.get("conversation_id", "unknown")
             timestamp = chat.get("timestamp", "")
-            history = chat.get("history", [])
+            messages = chat.get("messages", [])  # Changed from 'history' to 'messages'
             
-            # Find user-assistant pairs in history
-            for i in range(len(history) - 1):
-                if history[i].get("role") == "user" and history[i+1].get("role") == "assistant":
-                    question = history[i].get("content", "").strip()
-                    answer = history[i+1].get("content", "").strip()
+            print(f"Debug - Chat {conversation_id} has {len(messages)} messages")  # Debug print
+            
+            # Find user-assistant pairs in messages
+            for i in range(len(messages) - 1):
+                if (messages[i].get("role") == "user" and 
+                    messages[i+1].get("role") == "assistant"):
+                    question = messages[i].get("content", "").strip()
+                    answer = messages[i+1].get("content", "").strip()
                     
                     # Only include non-empty pairs
                     if question and answer:
@@ -100,14 +105,16 @@ class ChatEvaluator:
                             "timestamp": timestamp,
                             "question": question,
                             "original_answer": answer,
-                            "question_timestamp": history[i].get("timestamp", ""),
-                            "answer_timestamp": history[i+1].get("timestamp", "")
+                            "question_timestamp": messages[i].get("timestamp", ""),
+                            "answer_timestamp": messages[i+1].get("timestamp", "")
                         })
                         
                         # Check if we've reached the limit
                         if len(qa_pairs) >= limit:
+                            print(f"Debug - Reached limit of {limit} QA pairs")  # Debug print
                             return qa_pairs
         
+        print(f"Debug - Extracted {len(qa_pairs)} QA pairs")  # Debug print
         return qa_pairs
     
     def get_evaluation_status(self) -> Dict[str, int]:
@@ -340,4 +347,5 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
