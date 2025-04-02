@@ -32,6 +32,7 @@ from web.evaluation_interface import (
     export_training_data_action
 )
 from src.analytics.chat_evaluator import ChatEvaluator
+import sys
 
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
@@ -326,18 +327,20 @@ def load_vector_store():
 def detect_language(text):
     """Detect language with detailed logging"""
     try:
-        print("\n=== Language Detection Start ===")
-        print(f"Input text to analyze: '{text}'")
+        print("\n=== Language Detection Start ===", flush=True)
+        print(f"Input text to analyze: '{text}'", flush=True)
         detected = detect(text)
-        print(f"Detected language code: '{detected}'")
-        print("=== Language Detection End ===\n")
+        print(f"Detected language code: '{detected}'", flush=True)
+        print("=== Language Detection End ===\n", flush=True)
+        sys.stdout.flush()
         return detected
     except Exception as e:
-        print("\n=== Language Detection Error ===")
-        print(f"Input text: '{text}'")
-        print(f"Error details: {str(e)}")
-        print("Defaulting to 'en'")
-        print("=== Language Detection End ===\n")
+        print("\n=== Language Detection Error ===", flush=True)
+        print(f"Input text: '{text}'", flush=True)
+        print(f"Error details: {str(e)}", flush=True)
+        print("Defaulting to 'en'", flush=True)
+        print("=== Language Detection End ===\n", flush=True)
+        sys.stdout.flush()
         return "en"
 
 def respond(
@@ -353,12 +356,14 @@ def respond(
     """Generate response using the current model with fallback option"""
     global fallback_model_attempted
     
-    print("\n=== Response Generation Start ===")
+    print("\n=== Response Generation Start ===", flush=True)
+    sys.stdout.flush()
     
     # Detect language
     user_language = detect_language(message)
-    print(f"Processing message: '{message}'")
-    print(f"Using detected language: '{user_language}'")
+    print(f"Processing message: '{message}'", flush=True)
+    print(f"Using detected language: '{user_language}'", flush=True)
+    sys.stdout.flush()
     
     # Create stronger language instruction
     language_instruction = f"""
