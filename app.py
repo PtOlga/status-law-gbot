@@ -333,6 +333,11 @@ def respond(
         import uuid
         conversation_id = str(uuid.uuid4())
     
+    # Add explicit language instruction
+    enhanced_system_message = system_message + f"\nCRITICAL: You MUST respond in the EXACT SAME language as this user message: {message}"
+    
+    messages = [{"role": "system", "content": enhanced_system_message}]
+    
     # Get context from knowledge base
     context = get_context(message, conversation_id)
     
