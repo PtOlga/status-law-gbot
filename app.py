@@ -323,6 +323,19 @@ def load_vector_store():
         print(traceback.format_exc())
         return None
 
+def detect_language(text):
+    try:
+        detected = detect(text)
+        print(f"\nLanguage Detection Debug:")
+        print(f"Input text: {text}")
+        print(f"Detected language code: {detected}")
+        return detected
+    except Exception as e:
+        print(f"\nLanguage Detection Error:")
+        print(f"Input text: {text}")
+        print(f"Error: {str(e)}")
+        return "en"  # Default to English if detection fails
+
 def respond(
     message,
     history,
@@ -336,25 +349,28 @@ def respond(
     """Generate response using the current model with fallback option"""
     global fallback_model_attempted
     
-    # Add language detection at the start of the function
-    from langdetect import detect
-    
-    def detect_language(text):
-        try:
-            return detect(text)
-        except:
-            return "en"  # Default to English if detection fails
-            
+    # Detect language with detailed logging
     user_language = detect_language(message)
-    print(f"Debug - Detected language: {user_language}")
+    print(f"\nResponse Generation Debug:")
+    print(f"User message: {message}")
+    print(f"Detected language: {user_language}")
     
     # Create ID for new conversation
     if not conversation_id:
         import uuid
         conversation_id = str(uuid.uuid4())
     
-    # Add language info to system message
-    language_instruction = f"CRITICAL INSTRUCTION: User message language is detected as '{user_language}'. You MUST respond in EXACTLY this language.\n\n"
+    # Add stronger language instruction
+    language_instruction = f"""
+    CRITICAL INSTRUCTION: User message language is detected as '{user_language}'. 
+    YOU MUST RESPOND IN {user_language} LANGUAGE ONLY.
+    ЗАПРЕЩЕНО ОТВЕЧАТЬ НА ЛЮБОМ ЯЗЫКЕ КРОМЕ ЯЗЫКА ВОПРОСА.
+    THIS IS THE MOST IMPORTANT RULE.
+    
+    Original message: {message}
+    Detected language: {user_language}
+    """
+    
     enhanced_system_message = language_instruction + system_message
     
     messages = [{"role": "system", "content": enhanced_system_message}]
@@ -1211,4 +1227,4 @@ if __name__ == "__main__":
     if not load_vector_store():
         print("Knowledge base not found. Please create it through the interface.")
     
-    demo.launch()
+    demo.launch(share=True)  
