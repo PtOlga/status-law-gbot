@@ -324,17 +324,21 @@ def load_vector_store():
         return None
 
 def detect_language(text):
+    """Detect language with detailed logging"""
     try:
+        print("\n=== Language Detection Start ===")
+        print(f"Input text to analyze: '{text}'")
         detected = detect(text)
-        print(f"\nLanguage Detection Debug:")
-        print(f"Input text: {text}")
-        print(f"Detected language code: {detected}")
+        print(f"Detected language code: '{detected}'")
+        print("=== Language Detection End ===\n")
         return detected
     except Exception as e:
-        print(f"\nLanguage Detection Error:")
-        print(f"Input text: {text}")
-        print(f"Error: {str(e)}")
-        return "en"  # Default to English if detection fails
+        print("\n=== Language Detection Error ===")
+        print(f"Input text: '{text}'")
+        print(f"Error details: {str(e)}")
+        print("Defaulting to 'en'")
+        print("=== Language Detection End ===\n")
+        return "en"
 
 def respond(
     message,
@@ -349,11 +353,23 @@ def respond(
     """Generate response using the current model with fallback option"""
     global fallback_model_attempted
     
-    # Detect language with detailed logging
+    print("\n=== Response Generation Start ===")
+    
+    # Detect language
     user_language = detect_language(message)
-    print(f"\nResponse Generation Debug:")
-    print(f"User message: {message}")
-    print(f"Detected language: {user_language}")
+    print(f"Processing message: '{message}'")
+    print(f"Using detected language: '{user_language}'")
+    
+    # Create stronger language instruction
+    language_instruction = f"""
+    CRITICAL: Message language detected as '{user_language}'
+    YOU MUST RESPOND IN {user_language} LANGUAGE ONLY.
+    ЗАПРЕЩЕНО ОТВЕЧАТЬ НА ЛЮБОМ ЯЗЫКЕ КРОМЕ ЯЗЫКА ВОПРОСА ({user_language}).
+    THIS IS THE MOST IMPORTANT RULE.
+    """
+    
+    print(f"Added language instruction for: {user_language}")
+    print("=== Response Generation Setup Complete ===\n")
     
     # Create ID for new conversation
     if not conversation_id:
