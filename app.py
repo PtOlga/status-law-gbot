@@ -235,7 +235,10 @@ def initialize_client(model_id=None):
     
     client = InferenceClient(
         model_id,
-        token=HF_TOKEN
+        token=API_CONFIG["token"],
+        endpoint=API_CONFIG["inference_endpoint"],
+        headers=API_CONFIG["headers"],
+        timeout=API_CONFIG["timeout"]
     )
     return client
 

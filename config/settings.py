@@ -5,6 +5,18 @@ HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
+# API Configuration
+API_CONFIG = {
+    "inference_endpoint": os.getenv("HF_INFERENCE_ENDPOINT", "https://api-inference.huggingface.co"),
+    "token": HF_TOKEN,
+    "is_paid_tier": True,  # или False в зависимости от вашего плана
+    "timeout": 30,
+    "headers": {
+        "X-Use-Cache": "false",
+        "Content-Type": "application/json"
+    }
+}
+
 # Dataset configuration
 DATASET_ID = "Rulga/status-law-knowledge-base"
 CHAT_HISTORY_PATH = "chat_history"
@@ -110,6 +122,10 @@ MODELS = {
         }
     }
 }
+
+# Update MODELS configuration
+for model in MODELS.values():
+    model["endpoint"] = API_CONFIG["inference_endpoint"]
 
 # Default model
 DEFAULT_MODEL = "llama-7b"  # Changed from "zephyr-7b" to "llama-7b"
