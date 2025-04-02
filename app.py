@@ -644,17 +644,13 @@ def save_chat_history(history, conversation_id):
 
 def respond_and_clear(message, history, conversation_id):
     """Handle chat message and clear input"""
-    # Get model parameters from config
-    max_tokens = ACTIVE_MODEL['parameters']['max_length']
-    temperature = ACTIVE_MODEL['parameters']['temperature']
-    top_p = ACTIVE_MODEL['parameters']['top_p']
-    
-    # Print debug information to help diagnose the issue
-    print("Debug - Message type:", type(message), "Content:", message)
-    print("Debug - History type:", type(history), "Content:", history)
-    
     try:
-        # Get response generator
+        # Get model parameters from config
+        max_tokens = ACTIVE_MODEL['parameters']['max_length']
+        temperature = ACTIVE_MODEL['parameters']['temperature']
+        top_p = ACTIVE_MODEL['parameters']['top_p']
+        
+        # Get response
         response_generator = respond(
             message=message,
             history=history if history else [],
@@ -665,43 +661,26 @@ def respond_and_clear(message, history, conversation_id):
             top_p=top_p
         )
         
-        # Get first response from generator
-        new_history, conv_id = next(response_generator)
+        # Get response from generator
+        new_history, conv_id = response_generator
         
-        # Debug the response
-        print("Debug - Final history:", new_history)
-        
-        # Check if the history contains errors (by looking for error message pattern)
-        last_message = new_history[-1] if new_history else None
-        is_error = last_message and isinstance(last_message.get('content', ''), str) and "⚠️ API Error" in last_message.get('content', '')
-        
-        # Save chat history after response (even with errors)
-        save_chat_history(new_history, conv_id)
-        
-        return new_history, conv_id, ""  # Clear message input
+        # Validate response format
+        if isinstance(new_history, list) and len(new_history) > 0:
+            return new_history, conv_id, ""  # Return history, conv_id and clear message
+            
+        raise ValueError("Invalid response format")
         
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
         
-        # Create a more readable error message
-        if "incompatible with messages format" in str(e):
-            error_message = (
-                "⚠️ Message processing error: Problem with message format.\n\n"
-                "Please try to clear the chat history using the 'Clear' button or "
-                "switch to another model."
-            )
-        else:
-            error_message = f"⚠️ Error: {str(e)}"
-            
         # Create error history in the correct format
         error_history = history.copy() if history else []
         error_history.append({"role": "user", "content": message})
-        error_history.append({"role": "assistant", "content": error_message})
+        error_history.append({
+            "role": "assistant", 
+            "content": "⚠️ Произошла ошибка при обработке сообщения. Пожалуйста, попробуйте еще раз."
+        })
         
-        # Still try to save history with error
-        if conversation_id:
-            save_chat_history(error_history, conversation_id)
-            
         return error_history, conversation_id, ""
 
 def update_model_info(model_key):
