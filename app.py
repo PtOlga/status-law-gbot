@@ -102,7 +102,29 @@ MODEL_DETAILS = {
         ],
         "documentation": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
     },
+    "xglm-7.5b": {
+        "full_name": "Meta XGLM 7.5B",
+        "capabilities": [
+            "Specialized for multilingual generation",
+            "Support for 30+ languages",
+            "Strong cross-lingual transfer abilities",
+            "Consistent performance across diverse languages"
+        ],
+        "limitations": [
+            "Less instruction-tuned than dedicated chat models",
+            "May require more specific prompting",
+            "Not specifically optimized for legal domain",
+            "Slightly larger model requiring more GPU memory"
+        ],
+        "use_cases": [
+            "International legal assistance in native languages",
+            "Complex multilingual documentation",
+            "Serving clients from diverse linguistic backgrounds",
+            "Translation and summarization of legal concepts across languages"
+        ],
+        "documentation": "https://huggingface.co/facebook/xglm-7.5B"
     }
+}
 # MODEL_DETAILS = {
 #     "llama-7b": {
 #         "full_name": "Meta Llama 2 7B Chat",
