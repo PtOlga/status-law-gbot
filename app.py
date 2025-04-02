@@ -3,6 +3,7 @@ import os
 import json
 import datetime
 from pathlib import Path
+from langdetect import detect  # новый импорт
 from huggingface_hub import InferenceClient, HfApi
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import (
@@ -335,13 +336,25 @@ def respond(
     """Generate response using the current model with fallback option"""
     global fallback_model_attempted
     
+    # Add language detection at the start of the function
+    from langdetect import detect
+    
+    def detect_language(text):
+        try:
+            return detect(text)
+        except:
+            return "en"  # Default to English if detection fails
+            
+    user_language = detect_language(message)
+    print(f"Debug - Detected language: {user_language}")
+    
     # Create ID for new conversation
     if not conversation_id:
         import uuid
         conversation_id = str(uuid.uuid4())
     
-    # Add explicit language instruction at the very beginning of system message
-    language_instruction = f"CRITICAL INSTRUCTION: This user message is the source of truth for response language. You MUST respond in EXACTLY the same language as: {message}\n\n"
+    # Add language info to system message
+    language_instruction = f"CRITICAL INSTRUCTION: User message language is detected as '{user_language}'. You MUST respond in EXACTLY this language.\n\n"
     enhanced_system_message = language_instruction + system_message
     
     messages = [{"role": "system", "content": enhanced_system_message}]
