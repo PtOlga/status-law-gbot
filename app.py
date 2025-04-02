@@ -343,7 +343,7 @@ def detect_language(text):
     except Exception as e:
         print(f"Language detection error: {str(e)}. Defaulting to English.")
         return "en"
-    
+
 def respond(
     message,
     history,
@@ -354,175 +354,52 @@ def respond(
     top_p,
     attempt_fallback=True
 ):
-    """Generate response using the current model with enhanced language handling"""
-    global fallback_model_attempted
-    
-    # --- Setup and Initial Logging ---
-    print("\n" + "="*50)
-    print("=== NEW CHAT REQUEST ===")
-    print(f"Input message: '{message}'")
-    print(f"History length: {len(history) if history else 0}")
-    print(f"Conversation ID: {conversation_id or 'New conversation'}")
-    print("="*50 + "\n")
-
-    # --- Language Detection with Fallback ---
+    """Generate response with proper error handling"""
     try:
-        user_language = detect_language(message)
-        print(f"Detected language: {user_language}")
+        # Initialize response variables
+        bot_response = ""
+        error_occurred = False
         
-        # Validate supported languages
-        SUPPORTED_LANGUAGES = ["en", "ru", "uk", "de", "fr", "es"]  # Add more as needed
-        if user_language not in SUPPORTED_LANGUAGES:
-            user_language = "en"
-            print(f"Unsupported language, defaulting to English")
-    except Exception as e:
-        user_language = "en"
-        print(f"Language detection failed, defaulting to English. Error: {str(e)}")
-
-    # --- Create Conversation ID if missing ---
-    if not conversation_id:
-        import uuid
-        conversation_id = str(uuid.uuid4())
-        print(f"Generated new conversation ID: {conversation_id}")
-
-    # --- Enhanced Language Enforcement ---
-    LANGUAGE_INSTRUCTION = f"""
-    [CRITICAL INSTRUCTION - MUST FOLLOW]
-    - The user's message is in {user_language.upper()} language.
-    - You MUST respond in {user_language.upper()} ONLY.
-    - Never translate or switch to another language.
-    - This is the highest priority rule above all others.
-    
-    [USER'S ORIGINAL MESSAGE]
-    {message}
-    """
-
-    # --- Context Retrieval ---
-    context = ""
-    try:
-        context = get_context(message, conversation_id)
-        if context:
-            print("Retrieved context from knowledge base")
-            print(f"Context preview: {context[:200]}...")
-        else:
-            print("No context retrieved from knowledge base")
-    except Exception as e:
-        print(f"Context retrieval error: {str(e)}")
-
-    # --- Prepare Messages for API ---
-    messages = [
-        {
-            "role": "system", 
-            "content": (
-                f"{system_message}\n\n"
-                f"Current date: {datetime.datetime.now().strftime('%Y-%m-%d')}\n"
-                f"Language requirement: Respond in {user_language} only\n"
-                f"{'Additional context:' + context if context else ''}"
-            )
-        }
-    ]
-
-    # Add conversation history
-    if history:
-        try:
-            for entry in history:
-                if isinstance(entry, dict) and 'role' in entry and 'content' in entry:
-                    messages.append(entry)
-            print(f"Added {len(history)} history messages")
-        except Exception as e:
-            print(f"Error processing history: {str(e)}")
-
-    # Add current message with language enforcement
-    messages.append({
-        "role": "user",
-        "content": LANGUAGE_INSTRUCTION
-    })
-
-    # --- API Request with Error Handling ---
-    try:
-        print("\nSending request to model API...")
-        print(f"Model: {ACTIVE_MODEL['id']}")
-        print(f"Parameters: temp={temperature}, top_p={top_p}, max_tokens={max_tokens}")
+        # --- Language Detection ---
+        user_language = language_processor.detect_language(message)
+        lang_instruction = language_processor.get_language_instruction(user_language, message)
         
-        # Non-streaming response for better error handling
+        # --- API Request ---
         response = client.chat_completion(
-            messages=messages,
+            messages=[
+                {"role": "system", "content": system_message},
+                *history,
+                {"role": "user", "content": lang_instruction}
+            ],
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p,
             stream=False
         )
         
-        # Extract and validate response
-        if not response.choices:
-            raise ValueError("Empty response from API")
-            
         bot_response = response.choices[0].message.content
-        print(f"\nRaw API response: {bot_response}")
         
-        # Verify response language
-        try:
-            response_lang = detect_language(bot_response)
-            if response_lang != user_language:
-                print(f"WARNING: Response language mismatch! Expected {user_language}, got {response_lang}")
-                # Add language correction prefix if mismatch
-                bot_response = f"[Language corrected to {user_language}]\n{bot_response}"
-        except Exception as e:
-            print(f"Couldn't verify response language: {str(e)}")
-
-        # --- Format Final Output ---
-        new_history = history.copy() if history else []
-        new_history.extend([
+        # --- Format Successful Response ---
+        new_history = [
+            *history,
             {"role": "user", "content": message},
             {"role": "assistant", "content": bot_response}
-        ])
+        ]
         
-        # Reset fallback flag on success
-        fallback_model_attempted = False
-        
-        print("\n=== SUCCESSFUL RESPONSE ===")
         return new_history, conversation_id
         
     except Exception as e:
-        error_msg = str(e)
-        print(f"\n!!! API ERROR: {error_msg}")
+        print(f"API Error: {str(e)}")
+        error_msg = format_friendly_error(str(e))
         
-        # --- Fallback Logic ---
-        if attempt_fallback and not fallback_model_attempted:
-            fallback_model_key = get_fallback_model(ACTIVE_MODEL['id'])
-            if fallback_model_key:
-                print(f"Attempting fallback to {fallback_model_key}")
-                fallback_model_attempted = True
-                
-                # Switch model temporarily
-                original_model = ACTIVE_MODEL.copy()
-                if switch_to_model(fallback_model_key):
-                    try:
-                        result = yield from respond(
-                            message, history, conversation_id,
-                            system_message, max_tokens,
-                            temperature, top_p,
-                            attempt_fallback=False  # Don't recurse infinitely
-                        )
-                        # Restore original model
-                        ACTIVE_MODEL.update(original_model)
-                        initialize_client(ACTIVE_MODEL['id'])
-                        return result
-                    except Exception as fallback_e:
-                        print(f"Fallback also failed: {str(fallback_e)}")
-
-        # --- Error Response Formatting ---
-        friendly_error = format_friendly_error(error_msg)
-        print(f"Returning error to user: {friendly_error}")
-        
-        error_history = history.copy() if history else []
-        error_history.extend([
+        # --- Format Error Response ---
+        error_history = [
+            *history,
             {"role": "user", "content": message},
-            {"role": "assistant", "content": friendly_error}
-        ])
+            {"role": "assistant", "content": error_msg}
+        ]
         
         return error_history, conversation_id
-
 
 def format_friendly_error(api_error):
     """Convert API errors to user-friendly messages"""
@@ -619,7 +496,7 @@ def save_chat_history(history, conversation_id):
             # Initialize the Hugging Face API client
             api = HfApi(token=HF_TOKEN)
             
-           # Extract just the directory name from CHAT_HISTORY_PATH
+            # Extract just the directory name from CHAT_HISTORY_PATH
             dir_name = os.path.basename(CHAT_HISTORY_PATH)
             target_path = f"{dir_name}/{filename}"
             
@@ -643,39 +520,41 @@ def save_chat_history(history, conversation_id):
         return False
 
 def respond_and_clear(message, history, conversation_id):
-    """Handle chat message and clear input"""
+    """Wrapper function with proper output handling"""
     try:
-        # Get model parameters from config
-        max_tokens = ACTIVE_MODEL['parameters']['max_length']
-        temperature = ACTIVE_MODEL['parameters']['temperature']
-        top_p = ACTIVE_MODEL['parameters']['top_p']
+        # Get current model parameters
+        params = ACTIVE_MODEL['parameters']
         
-        # Get response using yield from
-        for response in respond(
+        # Call respond function
+        result = respond(
             message=message,
             history=history if history else [],
             conversation_id=conversation_id,
             system_message=DEFAULT_SYSTEM_MESSAGE,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            top_p=top_p
-        ):
-            if isinstance(response, tuple) and len(response) == 2:
-                new_history, conv_id = response
-                return new_history, conv_id, ""
+            max_tokens=params['max_length'],
+            temperature=params['temperature'],
+            top_p=params['top_p']
+        )
         
-        raise ValueError("No valid response received from generator")
+        if not result:
+            raise ValueError("Empty response from API")
+            
+        new_history, new_conv_id = result
+        
+        # Save chat history
+        save_chat_history(new_history, new_conv_id)
+        
+        return new_history, new_conv_id, ""  # Clear input
         
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
         
-        # Create error history in the correct format
-        error_history = history.copy() if history else []
-        error_history.append({"role": "user", "content": message})
-        error_history.append({
-            "role": "assistant", 
-            "content": f"{message}\n\n{error_history[-1]['content'] if error_history else ''}"
-        })
+        # Create safe error response
+        error_history = [
+            *history,
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": "⚠️ An error occurred while processing the message. Please try again."}
+        ]
         
         return error_history, conversation_id, ""
 
