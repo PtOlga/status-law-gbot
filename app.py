@@ -1095,7 +1095,8 @@ with gr.Blocks() as demo:
             
             # Save evaluation
             save_btn.click(
-                fn=lambda *args: save_evaluation(*args, evaluator=chat_evaluator),
+                fn=lambda conv_id, q, orig_a, imp_a, acc, comp, rel, clar, legal, notes: 
+                    save_evaluation(conv_id, q, orig_a, imp_a, acc, comp, rel, clar, legal, notes, evaluator=chat_evaluator),
                 inputs=[
                     selected_conversation, question_display, original_answer, improved_answer,
                     accuracy, completeness, relevance, clarity, legal_correctness, notes

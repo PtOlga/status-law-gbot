@@ -130,7 +130,6 @@ def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) 
     return ("", "", "", 3, 3, 3, 3, 3, "")
 
 def save_evaluation(
-    evaluator: ChatEvaluator,
     conversation_id: str,
     question: str,
     original_answer: str,
@@ -140,7 +139,8 @@ def save_evaluation(
     relevance: int,
     clarity: int,
     legal_correctness: int,
-    notes: str
+    notes: str,
+    evaluator: ChatEvaluator
 ) -> str:
     """
     Save evaluation to file and dataset
