@@ -650,8 +650,8 @@ def respond_and_clear(message, history, conversation_id):
         temperature = ACTIVE_MODEL['parameters']['temperature']
         top_p = ACTIVE_MODEL['parameters']['top_p']
         
-        # Get response
-        response_generator = respond(
+        # Get response using yield from
+        for response in respond(
             message=message,
             history=history if history else [],
             conversation_id=conversation_id,
@@ -659,16 +659,12 @@ def respond_and_clear(message, history, conversation_id):
             max_tokens=max_tokens,
             temperature=temperature,
             top_p=top_p
-        )
+        ):
+            if isinstance(response, tuple) and len(response) == 2:
+                new_history, conv_id = response
+                return new_history, conv_id, ""
         
-        # Get response from generator
-        new_history, conv_id = response_generator
-        
-        # Validate response format
-        if isinstance(new_history, list) and len(new_history) > 0:
-            return new_history, conv_id, ""  # Return history, conv_id and clear message
-            
-        raise ValueError("Invalid response format")
+        raise ValueError("No valid response received from generator")
         
     except Exception as e:
         print(f"Error in respond_and_clear: {str(e)}")
@@ -678,7 +674,7 @@ def respond_and_clear(message, history, conversation_id):
         error_history.append({"role": "user", "content": message})
         error_history.append({
             "role": "assistant", 
-            "content": "⚠️ Произошла ошибка при обработке сообщения. Пожалуйста, попробуйте еще раз."
+            "content": f"{message}\n\n{error_history[-1]['content'] if error_history else ''}"
         })
         
         return error_history, conversation_id, ""
