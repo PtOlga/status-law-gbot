@@ -64,6 +64,50 @@ MODELS = {
                 "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
             }
         }
+    },
+    "mistral-7b": {
+        "id": "mistralai/Mistral-7B-Instruct-v0.2",
+        "name": "Mistral 7B Instruct",
+        "description": "Mistral's 7B instruction-tuned model with better multilingual support",
+        "type": "base",
+        "parameters": {
+            "max_length": 2048,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+        "training": {
+            "base_model_path": "mistralai/Mistral-7B-Instruct-v0.2",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "mistral-7b-instruct-tuned"),
+            "lora_config": {
+                "r": 16,
+                "lora_alpha": 32,
+                "lora_dropout": 0.05,
+                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
+            }
+        }
+    },
+    "xglm-7.5b": {
+        "id": "facebook/xglm-7.5B",
+        "name": "XGLM 7.5B",
+        "description": "Meta's multilingual model designed for cross-lingual generation",
+        "type": "base",
+        "parameters": {
+            "max_length": 2048,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+        "training": {
+            "base_model_path": "facebook/xglm-7.5B",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "xglm-7.5b-tuned"),
+            "lora_config": {
+                "r": 16,
+                "lora_alpha": 32,
+                "lora_dropout": 0.05,
+                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
+            }
+        }
     }
 }
 
