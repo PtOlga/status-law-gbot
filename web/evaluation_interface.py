@@ -82,16 +82,16 @@ def get_qa_pairs_dataframe(evaluator: ChatEvaluator, show_evaluated: bool = Fals
     # Return empty DataFrame if no pairs
     return pd.DataFrame(columns=["ID", "Question", "Answer", "Evaluated"])
 
-def load_qa_pair_for_evaluation(evaluator: ChatEvaluator, conversation_id: str) -> Tuple[str, str, Dict, str]:
+def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) -> Tuple[str, str, str, Dict, str]:
     """
     Load a QA pair for evaluation
     
     Args:
-        evaluator: ChatEvaluator instance
         conversation_id: ID of the conversation to load
+        evaluator: ChatEvaluator instance
         
     Returns:
-        Tuple of (question, original_answer, existing_ratings, notes)
+        Tuple of (question, original_answer, improved_answer, existing_ratings, notes)
     """
     # Get all QA pairs
     qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=1000)

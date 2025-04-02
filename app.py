@@ -1087,7 +1087,7 @@ with gr.Blocks() as demo:
             
             # Load conversation for evaluation
             load_btn.click(
-                fn=lambda x: load_qa_pair_for_evaluation(x, chat_evaluator),
+                fn=lambda x: load_qa_pair_for_evaluation(conversation_id=x, evaluator=chat_evaluator),
                 inputs=[selected_conversation],
                 outputs=[question_display, original_answer, improved_answer, 
                         accuracy, completeness, relevance, clarity, legal_correctness, notes]
