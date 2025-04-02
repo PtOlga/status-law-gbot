@@ -325,24 +325,22 @@ def load_vector_store():
         return None
 
 def detect_language(text):
-    """Detect language with detailed logging"""
+    """Detect language with fallback and enhanced logging"""
     try:
-        print("\n=== Language Detection Start ===", flush=True)
-        print(f"Input text to analyze: '{text}'", flush=True)
-        detected = detect(text)
-        print(f"Detected language code: '{detected}'", flush=True)
-        print("=== Language Detection End ===\n", flush=True)
-        sys.stdout.flush()
-        return detected
+        # Minimum text length for reliable detection
+        if len(text.strip()) < 10:
+            return "en"  # Default for short texts
+            
+        lang = detect(text)
+        
+        # Validate detected language
+        supported_langs = ["en", "ru", "uk", "de", "fr"]  # Add your supported languages
+        return lang if lang in supported_langs else "en"
+        
     except Exception as e:
-        print("\n=== Language Detection Error ===", flush=True)
-        print(f"Input text: '{text}'", flush=True)
-        print(f"Error details: {str(e)}", flush=True)
-        print("Defaulting to 'en'", flush=True)
-        print("=== Language Detection End ===\n", flush=True)
-        sys.stdout.flush()
+        print(f"Language detection error: {str(e)}. Defaulting to English.")
         return "en"
-
+    
 def respond(
     message,
     history,
@@ -353,176 +351,194 @@ def respond(
     top_p,
     attempt_fallback=True
 ):
-    """Generate response using the current model with fallback option"""
+    """Generate response using the current model with enhanced language handling"""
     global fallback_model_attempted
     
-    print("\n=== Response Generation Start ===", flush=True)
-    sys.stdout.flush()
-    
-    # Detect language
-    user_language = detect_language(message)
-    print(f"Processing message: '{message}'", flush=True)
-    print(f"Using detected language: '{user_language}'", flush=True)
-    sys.stdout.flush()
-    
-    # Create stronger language instruction
-    language_instruction = f"""
-    CRITICAL: Message language detected as '{user_language}'
-    YOU MUST RESPOND IN {user_language} LANGUAGE ONLY.
-    ЗАПРЕЩЕНО ОТВЕЧАТЬ НА ЛЮБОМ ЯЗЫКЕ КРОМЕ ЯЗЫКА ВОПРОСА ({user_language}).
-    THIS IS THE MOST IMPORTANT RULE.
-    """
-    
-    print(f"Added language instruction for: {user_language}")
-    print("=== Response Generation Setup Complete ===\n")
-    
-    # Create ID for new conversation
+    # --- Setup and Initial Logging ---
+    print("\n" + "="*50)
+    print("=== NEW CHAT REQUEST ===")
+    print(f"Input message: '{message}'")
+    print(f"History length: {len(history) if history else 0}")
+    print(f"Conversation ID: {conversation_id or 'New conversation'}")
+    print("="*50 + "\n")
+
+    # --- Language Detection with Fallback ---
+    try:
+        user_language = detect_language(message)
+        print(f"Detected language: {user_language}")
+        
+        # Validate supported languages
+        SUPPORTED_LANGUAGES = ["en", "ru", "uk", "de", "fr", "es"]  # Add more as needed
+        if user_language not in SUPPORTED_LANGUAGES:
+            user_language = "en"
+            print(f"Unsupported language, defaulting to English")
+    except Exception as e:
+        user_language = "en"
+        print(f"Language detection failed, defaulting to English. Error: {str(e)}")
+
+    # --- Create Conversation ID if missing ---
     if not conversation_id:
         import uuid
         conversation_id = str(uuid.uuid4())
+        print(f"Generated new conversation ID: {conversation_id}")
+
+    # --- Enhanced Language Enforcement ---
+    LANGUAGE_INSTRUCTION = f"""
+    [CRITICAL INSTRUCTION - MUST FOLLOW]
+    - The user's message is in {user_language.upper()} language.
+    - You MUST respond in {user_language.upper()} ONLY.
+    - Never translate or switch to another language.
+    - This is the highest priority rule above all others.
     
-    # Add stronger language instruction
-    language_instruction = f"""
-    CRITICAL INSTRUCTION: User message language is detected as '{user_language}'. 
-    YOU MUST RESPOND IN {user_language} LANGUAGE ONLY.
-    ЗАПРЕЩЕНО ОТВЕЧАТЬ НА ЛЮБОМ ЯЗЫКЕ КРОМЕ ЯЗЫКА ВОПРОСА.
-    THIS IS THE MOST IMPORTANT RULE.
-    
-    Original message: {message}
-    Detected language: {user_language}
+    [USER'S ORIGINAL MESSAGE]
+    {message}
     """
-    
-    enhanced_system_message = language_instruction + system_message
-    
-    messages = [{"role": "system", "content": enhanced_system_message}]
-    
-    # Get context from knowledge base
-    context = get_context(message, conversation_id)
-    
-    # Convert history from Gradio format to OpenAI format
-    messages = [{"role": "system", "content": system_message}]
-    if context:
-        messages[0]["content"] += f"\n\nContext for response:\n{context}"
-    
-    # Debug: print the history format
-    print("Debug - Processing history format:", history)
-    
-    # Convert history to OpenAI format for API call
+
+    # --- Context Retrieval ---
+    context = ""
+    try:
+        context = get_context(message, conversation_id)
+        if context:
+            print("Retrieved context from knowledge base")
+            print(f"Context preview: {context[:200]}...")
+        else:
+            print("No context retrieved from knowledge base")
+    except Exception as e:
+        print(f"Context retrieval error: {str(e)}")
+
+    # --- Prepare Messages for API ---
+    messages = [
+        {
+            "role": "system", 
+            "content": (
+                f"{system_message}\n\n"
+                f"Current date: {datetime.datetime.now().strftime('%Y-%m-%d')}\n"
+                f"Language requirement: Respond in {user_language} only\n"
+                f"{'Additional context:' + context if context else ''}"
+            )
+        }
+    ]
+
+    # Add conversation history
     if history:
         try:
             for entry in history:
-                # Check if we have messages in the expected format
                 if isinstance(entry, dict) and 'role' in entry and 'content' in entry:
                     messages.append(entry)
+            print(f"Added {len(history)} history messages")
         except Exception as e:
             print(f"Error processing history: {str(e)}")
-            # Continue with empty history if there was an error
-    
-    # Add current user message
-    messages.append({"role": "user", "content": message})
-    
-    # Debug: print API messages
-    print("Debug - API messages:", messages)
-    
+
+    # Add current message with language enforcement
+    messages.append({
+        "role": "user",
+        "content": LANGUAGE_INSTRUCTION
+    })
+
+    # --- API Request with Error Handling ---
     try:
-        # Non-streaming version for debugging
-        full_response = client.chat_completion(
-            messages,
+        print("\nSending request to model API...")
+        print(f"Model: {ACTIVE_MODEL['id']}")
+        print(f"Parameters: temp={temperature}, top_p={top_p}, max_tokens={max_tokens}")
+        
+        # Non-streaming response for better error handling
+        response = client.chat_completion(
+            messages=messages,
             max_tokens=max_tokens,
-            stream=False,
             temperature=temperature,
             top_p=top_p,
+            stream=False
         )
         
-        response = full_response.choices[0].message.content
-        print(f"Debug - Full response from API: {response}")
+        # Extract and validate response
+        if not response.choices:
+            raise ValueError("Empty response from API")
+            
+        bot_response = response.choices[0].message.content
+        print(f"\nRaw API response: {bot_response}")
         
-        # Reset fallback flag on successful API call
+        # Verify response language
+        try:
+            response_lang = detect_language(bot_response)
+            if response_lang != user_language:
+                print(f"WARNING: Response language mismatch! Expected {user_language}, got {response_lang}")
+                # Add language correction prefix if mismatch
+                bot_response = f"[Language corrected to {user_language}]\n{bot_response}"
+        except Exception as e:
+            print(f"Couldn't verify response language: {str(e)}")
+
+        # --- Format Final Output ---
+        new_history = history.copy() if history else []
+        new_history.extend([
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": bot_response}
+        ])
+        
+        # Reset fallback flag on success
         fallback_model_attempted = False
         
-        # Return complete response in the new format
-        final_history = history.copy() if history else []
-        # Add user message
-        final_history.append({"role": "user", "content": message})
-        # Add assistant response
-        final_history.append({"role": "assistant", "content": response})
+        print("\n=== SUCCESSFUL RESPONSE ===")
+        return new_history, conversation_id
         
-        yield final_history, conversation_id
-            
     except Exception as e:
-        print(f"Debug - Error during API call: {str(e)}")
-        error_message = str(e)
-        current_model_key = None
+        error_msg = str(e)
+        print(f"\n!!! API ERROR: {error_msg}")
         
-        # Find current model key
-        for key, model in MODELS.items():
-            if model["id"] == ACTIVE_MODEL["id"]:
-                current_model_key = key
-                break
-        
-        # Try fallback model if appropriate
-        if attempt_fallback and ("402" in error_message or "429" in error_message) and not fallback_model_attempted:
-            fallback_model_key = get_fallback_model(current_model_key)
+        # --- Fallback Logic ---
+        if attempt_fallback and not fallback_model_attempted:
+            fallback_model_key = get_fallback_model(ACTIVE_MODEL['id'])
             if fallback_model_key:
+                print(f"Attempting fallback to {fallback_model_key}")
                 fallback_model_attempted = True
-                
-                # Log fallback attempt
-                print(f"Attempting to fallback from {current_model_key} to {fallback_model_key}")
-                log_api_error(message, error_message, ACTIVE_MODEL["id"], is_fallback=True)
                 
                 # Switch model temporarily
                 original_model = ACTIVE_MODEL.copy()
                 if switch_to_model(fallback_model_key):
-                    # Try with fallback model (but don't fallback again)
-                    fallback_generator = respond(
-                        message, 
-                        history, 
-                        conversation_id, 
-                        system_message, 
-                        max_tokens, 
-                        temperature, 
-                        top_p,
-                        attempt_fallback=False
-                    )
-                    
-                    yield from fallback_generator
-                    
-                    # Restore original model
-                    ACTIVE_MODEL.update(original_model)
-                    initialize_client(ACTIVE_MODEL["id"])
-                    return
-        
-        # Format user-friendly error message
-        if "402" in error_message and "Payment Required" in error_message:
-            friendly_error = (
-                "⚠️ API Error: Free request limit exceeded for this model.\n\n"
-                "Solutions:\n"
-                "1. Switch to another model in the 'Model Settings' tab\n"
-                "2. Use a local model version\n"
-                "3. Subscribe to Hugging Face PRO for higher limits"
-            )
-        elif "401" in error_message and "Unauthorized" in error_message:
-            friendly_error = (
-                "⚠️ API Error: Authentication problem. Please check your API key."
-            )
-        elif "429" in error_message and "Too Many Requests" in error_message:
-            friendly_error = (
-                "⚠️ API Error: Too many requests. Please try again later."
-            )
-        else:
-            friendly_error = f"⚠️ API Error: There was an error accessing the model. Details: {error_message}"
-        
-        # Log the error
-        log_api_error(message, error_message, ACTIVE_MODEL["id"])
+                    try:
+                        result = yield from respond(
+                            message, history, conversation_id,
+                            system_message, max_tokens,
+                            temperature, top_p,
+                            attempt_fallback=False  # Don't recurse infinitely
+                        )
+                        # Restore original model
+                        ACTIVE_MODEL.update(original_model)
+                        initialize_client(ACTIVE_MODEL['id'])
+                        return result
+                    except Exception as fallback_e:
+                        print(f"Fallback also failed: {str(fallback_e)}")
+
+        # --- Error Response Formatting ---
+        friendly_error = format_friendly_error(error_msg)
+        print(f"Returning error to user: {friendly_error}")
         
         error_history = history.copy() if history else []
-        # Add user message
-        error_history.append({"role": "user", "content": message})
-        # Add error message as assistant response
-        error_history.append({"role": "assistant", "content": friendly_error})
+        error_history.extend([
+            {"role": "user", "content": message},
+            {"role": "assistant", "content": friendly_error}
+        ])
         
-        yield error_history, conversation_id
+        return error_history, conversation_id
 
+
+def format_friendly_error(api_error):
+    """Convert API errors to user-friendly messages"""
+    if "402" in api_error or "Payment Required" in api_error:
+        return ("⚠️ API Limit Reached\n\n"
+                "Please try:\n"
+                "1. Switching models in Settings\n"
+                "2. Using local model version\n"
+                "3. Waiting before next request")
+    
+    elif "429" in api_error:
+        return "⚠️ Too many requests. Please wait before sending another message."
+        
+    elif "401" in api_error:
+        return "⚠️ Authentication error. Please check your API key."
+        
+    else:
+        return f"⚠️ Error processing request. Technical details: {api_error[:200]}"    
+    
 def log_api_error(user_message, error_message, model_id, is_fallback=False):
     """Log API errors to a separate file for monitoring"""
     try:
