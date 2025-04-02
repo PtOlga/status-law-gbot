@@ -755,6 +755,28 @@ def initialize_app():
     print(f"App initialized with model: {ACTIVE_MODEL['name']}")
     return selected_model
 
+def initialize_chat_evaluator():
+    """Initialize chat evaluator with proper paths"""
+    try:
+        evaluator = ChatEvaluator(
+            hf_token=HF_TOKEN,
+            dataset_id=DATASET_ID,
+            chat_history_path=CHAT_HISTORY_PATH,
+            annotations_dir=os.path.join(CHAT_HISTORY_PATH, 'evaluations')
+        )
+        
+        # Проверим наличие директорий
+        os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
+        os.makedirs(os.path.join(CHAT_HISTORY_PATH, 'evaluations'), exist_ok=True)
+        
+        print(f"Debug - Chat history path: {CHAT_HISTORY_PATH}")
+        print(f"Debug - Number of chat files: {len(os.listdir(CHAT_HISTORY_PATH))}")
+        
+        return evaluator
+    except Exception as e:
+        print(f"Error initializing chat evaluator: {str(e)}")
+        raise
+
 # Initialize HF client with token at startup
 selected_model = initialize_app()
 

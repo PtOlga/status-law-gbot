@@ -38,13 +38,35 @@ class ChatEvaluator:
     def get_chat_history(self) -> List[Dict[str, Any]]:
         """
         Get all chat history data from local files and dataset
-        
-        Returns:
-            List of chat histories
         """
         success, chat_data = self.dataset_manager.get_chat_history()
+        
+        # Добавим отладочную информацию
+        print(f"Debug - Chat history fetch success: {success}")
+        print(f"Debug - Number of chat records: {len(chat_data) if chat_data else 0}")
+        
         if not success or not chat_data:
-            return []
+            # Попробуем прочитать локальные файлы
+            local_data = self._read_local_chat_history()
+            print(f"Debug - Local chat records found: {len(local_data)}")
+            return local_data
+        return chat_data
+
+    def _read_local_chat_history(self) -> List[Dict[str, Any]]:
+        """
+        Read chat history from local files
+        """
+        chat_data = []
+        if os.path.exists(self.chat_history_path):
+            for filename in os.listdir(self.chat_history_path):
+                if filename.endswith('.json'):
+                    try:
+                        filepath = os.path.join(self.chat_history_path, filename)
+                        with open(filepath, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            chat_data.append(data)
+                    except Exception as e:
+                        print(f"Error reading chat file {filename}: {str(e)}")
         return chat_data
     
     def get_qa_pairs_for_evaluation(self, limit: int = 50) -> List[Dict[str, Any]]:
@@ -318,3 +340,4 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
