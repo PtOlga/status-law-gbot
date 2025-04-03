@@ -38,11 +38,6 @@ import sys
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
-# Enhanced model details for UI
-# MODEL_DETAILS = {
-
-# }
-
 # Path for user preferences file
 USER_PREFERENCES_PATH = os.path.join(os.path.dirname(__file__), "user_preferences.json")
 ERROR_LOGS_PATH = os.path.join(os.path.dirname(__file__), "error_logs")
@@ -154,7 +149,9 @@ def get_context(message, conversation_id):
     
     try:
         # Extract context
-        context_docs = vector_store.similarity_search(message, k=3)
+        # Reducing number of documents from 3 to 2 to decrease English context dominance
+        context_docs = vector_store.similarity_search(message, k=2)
+        
         # Add debug logging
         print(f"\nDebug - Query: {message}")
         for i, doc in enumerate(context_docs):
@@ -162,7 +159,11 @@ def get_context(message, conversation_id):
             print(f"Source: {doc.metadata.get('source', 'unknown')}")
             print(f"Content: {doc.page_content[:200]}...")
         
-        context_text = "\n\n".join([f"From {doc.metadata.get('source', 'unknown')}: {doc.page_content}" for doc in context_docs])
+        # Limit each fragment to 300 characters to reduce context dominance
+        context_text = "\n\n".join([f"Context from {doc.metadata.get('source', 'unknown')}: {doc.page_content[:300]}..." for doc in context_docs])
+        
+        # Add instruction that context is for reference only
+        context_text = "REFERENCE CONTEXT (use only to find facts, still answer in the user's language):\n" + context_text
         
         # Save context for this conversation
         context_store[conversation_id] = context_text
@@ -171,6 +172,28 @@ def get_context(message, conversation_id):
     except Exception as e:
         print(f"Error getting context: {str(e)}")
         return ""
+
+def post_process_response(user_message, bot_response):
+    """Check if the response language matches the user's language and fix if needed"""
+    try:
+        # Detect languages
+        user_lang = detect_language(user_message)
+        bot_lang = detect_language(bot_response)
+        
+        print(f"Debug - User language: {user_lang}, Bot response language: {bot_lang}")
+        
+        # If languages don't match and response is long enough to detect
+        if user_lang != bot_lang and len(bot_response.strip()) > 20:
+            print(f"Debug - Language mismatch detected! User: {user_lang}, Bot: {bot_lang}")
+            
+            # Add language mismatch warning
+            warning = f"⚠️ [Language mismatch detected. Response should be in {user_lang}]\n\n"
+            return warning + bot_response
+        
+        return bot_response
+    except Exception as e:
+        print(f"Error in post_process_response: {str(e)}")
+        return bot_response  # Return original response in case of error
 
 def load_vector_store():
     """Load knowledge base from dataset"""
@@ -201,24 +224,42 @@ def load_vector_store():
 def detect_language(text):
     """Detect language with fallback and enhanced logging"""
     try:
-        # Minimum text length for reliable detection
-        if len(text.strip()) < 10:
-            return "en"  # Default for short texts
-            
-        lang = detect(text)
+        # Strip text before checking length
+        cleaned_text = text.strip()
         
-        # Validate detected language - now including Asian languages
+        # Minimum text length for reliable detection - reduced to 5 characters
+        if len(cleaned_text) < 5:
+            print(f"Text too short for reliable detection: '{cleaned_text}'")
+            # Try to detect anyway for short texts instead of defaulting to English
+            try:
+                return detect(cleaned_text)
+            except:
+                return "en"  # Default only if detection fails
+            
+        lang = detect(cleaned_text)
+        
+        # Expand supported languages list
         supported_langs = [
-            "en", "ru", "uk", "de", "fr",  # European
-            "sv", "lt", "lv", "et", "fi",  # Nordic/Baltic
-            "zh", "ja", "ko",              # Asian
-            "ar", "fa", "he"               # Middle Eastern
+            # European languages
+            "en", "ru", "uk", "de", "fr", "es", "it", "pt", "nl", "pl", "cs", "sk", "hu",
+            # Nordic/Baltic
+            "sv", "no", "da", "lt", "lv", "et", "fi",
+            # Asian languages
+            "zh", "ja", "ko", "th", "vi",
+            # Middle Eastern
+            "ar", "fa", "he", "tr"
         ]
-        return lang if lang in supported_langs else "en"
+        
+        # Log detection result
+        if lang not in supported_langs:
+            print(f"Detected uncommon language: {lang} for text: '{cleaned_text[:50]}...'")
+            
+        # Return detected language even if not in supported list
+        return lang
         
     except Exception as e:
-        print(f"Language detection error: {str(e)}. Defaulting to English.")
-        return "en"
+        print(f"Language detection error: {str(e)} for text: '{text[:50]}...'")
+        return "en"  # Default to English only on error
 
 def respond(
     message,
@@ -232,10 +273,18 @@ def respond(
 ):
     """Generate response with proper error handling"""
     try:
+        # Determine user language
+        user_lang = detect_language(message)
+        print(f"Debug - Detected user language: {user_lang}")
+        
+        # Add language instruction at the end of system message to increase its importance
+        language_instruction = f"\nIMPORTANT: You MUST respond in {user_lang} language ONLY."
+        full_system_message = system_message + language_instruction
+        
         # --- API Request ---
         response = client.chat_completion(
             messages=[
-                {"role": "system", "content": system_message},
+                {"role": "system", "content": full_system_message},
                 *history,
                 {"role": "user", "content": message}
             ],
@@ -247,11 +296,14 @@ def respond(
         
         bot_response = response.choices[0].message.content
         
+        # Post-process response to check language
+        processed_response = post_process_response(message, bot_response)
+        
         # --- Format Successful Response ---
         new_history = [
             *history,
             {"role": "user", "content": message},
-            {"role": "assistant", "content": bot_response}
+            {"role": "assistant", "content": processed_response}
         ]
         
         return new_history, conversation_id
