@@ -28,20 +28,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 class FineTuner:
-    def __init__(
-        self,
-        base_model_id: str = "IlyaGusev/saiga_7b_lora",
-        output_dir: Optional[str] = None,
-        device: str = "cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu"
-    ):
-        """
-        Инициализация модуля для дообучения модели
-        
-        Args:
-            base_model_id: Идентификатор базовой модели на Hugging Face Hub
-            output_dir: Директория для сохранения результатов обучения
-            device: Устройство для обучения ('cuda' или 'cpu')
-        """
+    def __init__(self, base_model_id: str = "IlyaGusev/saiga_7b_lora",
+                 output_dir: Optional[str] = None,
+                 device: str = "cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu"):
         self.base_model_id = base_model_id
         self.output_dir = output_dir or TRAINING_OUTPUT_DIR
         self.device = device
@@ -49,7 +38,6 @@ class FineTuner:
         self.model = None
         self.chat_analyzer = ChatAnalyzer()
         
-        # Создаем директорию для результатов, если её нет
         os.makedirs(self.output_dir, exist_ok=True)
     
     def prepare_training_data(self, output_file: Optional[str] = None) -> str:
@@ -288,18 +276,6 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
     ) -> Tuple[bool, str]:
         """
         Start model fine-tuning process
-        
-        Args:
-            training_data_path: Path to training data (if None, data will be prepared automatically)
-            num_train_epochs: Number of training epochs
-            per_device_train_batch_size: Batch size per device
-            gradient_accumulation_steps: Number of gradient accumulation steps
-            learning_rate: Learning rate
-            logging_steps: Logging frequency
-            save_strategy: Model saving strategy
-            
-        Returns:
-            (success, message)
         """
         try:
             # Prepare training data if path not specified
