@@ -955,24 +955,7 @@ with gr.Blocks() as demo:
                     qa_table = gr.DataFrame(
                         get_qa_pairs_dataframe(chat_evaluator),
                         interactive=True,
-                        wrap=True,
-                        column_config={
-                            "ID": {
-                                "label": "Conversation ID",
-                                "copy_button": True
-                            },
-                            "Question": {
-                                "label": "Question",
-                                "max_width": "300px",
-                                "wrap": True
-                            },
-                            "Answer": {
-                                "label": "Answer",
-                                "max_width": "300px",
-                                "wrap": True
-                            }
-                        },
-                        elem_id="qa_pairs_table"
+                        wrap=True
                     )
                     
                     # Conversation selection section
@@ -1108,4 +1091,3 @@ if __name__ == "__main__":
         logger.warning("Knowledge base not found. Please create it through the interface.")
     
     demo.launch(share=True)
-
