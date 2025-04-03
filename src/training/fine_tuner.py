@@ -386,12 +386,16 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
         except Exception as e:
             return False, f"Error uploading model to Hub: {str(e)}"
 
-def finetune_from_chat_history(epochs: int = 3) -> Tuple[bool, str]:
+def finetune_from_chat_history(epochs: int = 3, 
+                             batch_size: int = 4,
+                             learning_rate: float = 2e-4) -> Tuple[bool, str]:
     """
     Function to start fine-tuning process based on chat history
     
     Args:
         epochs: Number of training epochs
+        batch_size: Training batch size
+        learning_rate: Learning rate
         
     Returns:
         (success, message)
@@ -406,7 +410,11 @@ def finetune_from_chat_history(epochs: int = 3) -> Tuple[bool, str]:
     
     # Create and start fine-tuning process
     tuner = FineTuner()
-    success, message = tuner.train(num_train_epochs=epochs)
+    success, message = tuner.prepare_and_train(
+        num_train_epochs=epochs,
+        per_device_train_batch_size=batch_size,
+        learning_rate=learning_rate
+    )
     
     return success, message
 

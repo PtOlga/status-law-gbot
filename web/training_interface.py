@@ -169,13 +169,10 @@ def delete_model_action(model_row_index, models_df):
 def start_finetune_action(epochs, batch_size, learning_rate):
     """Start model fine-tuning"""
     try:
-        from src.training.fine_tuner import FineTuner
+        from src.training.fine_tuner import finetune_from_chat_history
         
-        tuner = FineTuner()
-        success, message = tuner.train(
-            num_train_epochs=epochs,
-            per_device_train_batch_size=batch_size,
-            learning_rate=learning_rate
+        success, message = finetune_from_chat_history(
+            epochs=epochs
         )
         
         return f"Training {'completed' if success else 'failed'}: {message}"
