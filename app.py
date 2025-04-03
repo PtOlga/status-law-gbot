@@ -935,143 +935,130 @@ with gr.Blocks() as demo:
                 outputs=[analysis_output]
             )
 
-        with gr.Tab("Chat Evaluation"):
-            gr.Markdown("### Evaluation of Chat Responses")
-            
-            with gr.Row():
-                with gr.Column(scale=2):
-                    show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
-                    qa_table = gr.DataFrame(
-                        get_qa_pairs_dataframe(chat_evaluator),
-                        interactive=False,
-                        column_config={
-                            "ID": {
-                                "editable": False,
-                            },
-                            "Question": {
-                                "editable": False,
-                            },
-                            "Answer": {
-                                "editable": False,
-                            },
-                            "Evaluated": {
-                                "editable": False,
-                            }
-                        }
-                    )
-                    
-                    gr.Markdown("### Select Conversation to Evaluate")
-                    selected_conversation = gr.Textbox(
-                        label="Conversation ID", 
-                        placeholder="Select from table above",
-                        interactive=False
-                    )
-
-                    # Define event handlers outside of the UI definition
-                    def on_table_select(evt: gr.SelectData):
-                        if evt.value:
-                            return evt.value[0]  # Return the ID from the first column
-                        return ""
-
-                    def on_show_evaluated_change(show: bool):
-                        return get_qa_pairs_dataframe(chat_evaluator, show_evaluated=show)
-
-                    # Connect event handlers
-                    qa_table.select(
-                        fn=on_table_select,
-                        outputs=selected_conversation
-                    )
-
-                    show_evaluated.change(
-                        fn=on_show_evaluated_change,
-                        inputs=show_evaluated,
-                        outputs=qa_table
-                    )
-                    
-                    gr.Markdown("### Evaluate Response")
-                    question_display = gr.Textbox(label="User Question", interactive=False)
-                    original_answer = gr.TextArea(label="Original Bot Answer", interactive=False)
-                    improved_answer = gr.TextArea(label="Improved Answer (Gold Standard)", interactive=True)
-                    
-                    gr.Markdown("### Quality Ratings (1-5)")
-                    with gr.Row():
-                        accuracy = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Factual Accuracy")
-                        completeness = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Completeness")
-                    with gr.Row():
-                        relevance = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Relevance")
-                        clarity = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Clarity")
-                    legal_correctness = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Legal Correctness")
-                    
-                    notes = gr.TextArea(label="Evaluator Notes", placeholder="Add your notes about this response...")
-                    save_btn = gr.Button("Save Evaluation", variant="primary")
-                    evaluation_status_msg = gr.Textbox(label="Status", interactive=False)
-            
-            # Add event handlers
-            refresh_status_btn.click(
-                fn=lambda: get_evaluation_status(chat_evaluator),
-                inputs=[],
-                outputs=[evaluation_status]
-            )
-            
-            refresh_report_btn.click(
-                fn=lambda: generate_evaluation_report_html(chat_evaluator),
-                inputs=[],
-                outputs=[evaluation_report]
-            )
-            
-            show_evaluated.change(
-                fn=lambda x: get_qa_pairs_dataframe(chat_evaluator, x),
-                inputs=[show_evaluated],
-                outputs=[qa_table]
-            )
-            
-            # Table selection to conversation ID textbox
-            qa_table.select(
-                fn=lambda df, evt: evt.data[0] if evt and hasattr(evt, 'data') and len(evt.data) > 0 else "",
-                inputs=[qa_table],
-                outputs=[selected_conversation]
-            )
-
-            # Handle row deletion
-            def delete_qa_pair(evt):
-                if evt and hasattr(evt, 'data'):
-                    conversation_id = evt.data[0]  # Get ID from first column
-                    # Add logic for deleting the pair from database
-                    return get_qa_pairs_dataframe(chat_evaluator)  # Update table
-                return None
-
-            qa_table.delete(
-                fn=delete_qa_pair,
-                inputs=[qa_table],
-                outputs=[qa_table]
-            )
-            
-            # Load conversation for evaluation
-            load_btn.click(
-                fn=lambda x: load_qa_pair_for_evaluation(conversation_id=x, evaluator=chat_evaluator),
-                inputs=[selected_conversation],
-                outputs=[question_display, original_answer, improved_answer, 
-                        accuracy, completeness, relevance, clarity, legal_correctness, notes]
-            )
-            
-            # Save evaluation
-            save_btn.click(
-                fn=lambda conv_id, q, orig_a, imp_a, acc, comp, rel, clar, legal, notes: 
-                    save_evaluation(conv_id, q, orig_a, imp_a, acc, comp, rel, clar, legal, notes, evaluator=chat_evaluator),
-                inputs=[
-                    selected_conversation, question_display, original_answer, improved_answer,
-                    accuracy, completeness, relevance, clarity, legal_correctness, notes
-                ],
-                outputs=[evaluation_status_msg]
-            )
-            
-            # Export training data
-            export_btn.click(
-                fn=lambda min_r, path: export_training_data_action(min_r, path, chat_evaluator),
-                inputs=[min_rating, export_path],
-                outputs=[export_status]
-            )
+with gr.Tab("Chat Evaluation"):
+    gr.Markdown("### Evaluation of Chat Responses")
     
+    with gr.Row():
+        with gr.Column(scale=2):
+            # Status and reports section
+            with gr.Row():
+                with gr.Column(scale=1):
+                    evaluation_status = gr.Textbox(label="Evaluation Status", interactive=False)
+                    refresh_status_btn = gr.Button("Refresh Status")
+                
+                with gr.Column(scale=1):
+                    evaluation_report = gr.HTML(label="Evaluation Report")
+                    refresh_report_btn = gr.Button("Generate Report")
+            
+            # QA pairs table section
+            show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
+            qa_table = gr.DataFrame(
+                get_qa_pairs_dataframe(chat_evaluator),
+                interactive=False
+                # Removed column_config for compatibility
+            )
+            
+            # Conversation selection section
+            gr.Markdown("### Select Conversation to Evaluate")
+            with gr.Row():
+                selected_conversation = gr.Textbox(
+                    label="Conversation ID", 
+                    placeholder="Select from table above",
+                    interactive=True
+                )
+                load_btn = gr.Button("Load Conversation")
+            
+            # Conversation content section
+            gr.Markdown("### Evaluate Response")
+            question_display = gr.Textbox(label="User Question", interactive=False)
+            original_answer = gr.TextArea(label="Original Bot Answer", interactive=False)
+            improved_answer = gr.TextArea(label="Improved Answer (Gold Standard)", interactive=True)
+            
+            # Ratings section
+            gr.Markdown("### Quality Ratings (1-5)")
+            with gr.Row():
+                accuracy = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Factual Accuracy")
+                completeness = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Completeness")
+            with gr.Row():
+                relevance = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Relevance")
+                clarity = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Clarity")
+            legal_correctness = gr.Slider(minimum=1, maximum=5, value=3, step=1, label="Legal Correctness")
+            
+            # Notes and save section
+            notes = gr.TextArea(label="Evaluator Notes", placeholder="Add your notes about this response...")
+            save_btn = gr.Button("Save Evaluation", variant="primary")
+            evaluation_status_msg = gr.Textbox(label="Status", interactive=False)
+            
+            # Data export section
+            gr.Markdown("### Export Evaluation Data")
+            with gr.Row():
+                min_rating = gr.Slider(minimum=1, maximum=5, value=4, step=0.5, label="Minimum Rating for Export")
+                export_path = gr.Textbox(label="Export File Path", value="training_data.jsonl")
+            export_btn = gr.Button("Export Training Data")
+            export_status = gr.Textbox(label="Export Status", interactive=False)
+    
+    # Event handlers
+    # Status update
+    refresh_status_btn.click(
+        fn=lambda: get_evaluation_status(chat_evaluator),
+        inputs=[],
+        outputs=[evaluation_status]
+    )
+
+    # Report generation
+    refresh_report_btn.click(
+        fn=lambda: generate_evaluation_report_html(chat_evaluator),
+        inputs=[],
+        outputs=[evaluation_report]
+    )
+
+    # Toggle evaluated pairs display
+    show_evaluated.change(
+        fn=lambda x: get_qa_pairs_dataframe(chat_evaluator, x),
+        inputs=[show_evaluated],
+        outputs=[qa_table]
+    )
+
+    # Table row selection function
+    def on_table_select(evt):
+        try:
+            return evt.value[0] if evt and hasattr(evt, 'value') and len(evt.value) > 0 else ""
+        except Exception as e:
+            print(f"Error selecting table row: {str(e)}")
+            return ""
+
+    # Table row selection handler
+    qa_table.select(
+        fn=on_table_select,
+        outputs=[selected_conversation]
+    )
+
+    # Load pair for evaluation
+    load_btn.click(
+        fn=lambda x: load_qa_pair_for_evaluation(conversation_id=x, evaluator=chat_evaluator),
+        inputs=[selected_conversation],
+        outputs=[question_display, original_answer, improved_answer, 
+                accuracy, completeness, relevance, clarity, legal_correctness, notes]
+    )
+
+    # Save evaluation
+    save_btn.click(
+        fn=lambda conv_id, q, orig_a, imp_a, acc, comp, rel, clar, legal, notes: 
+            save_evaluation(conv_id, q, orig_a, imp_a, acc, comp, rel, clar, legal, notes, evaluator=chat_evaluator),
+        inputs=[
+            selected_conversation, question_display, original_answer, improved_answer,
+            accuracy, completeness, relevance, clarity, legal_correctness, notes
+        ],
+        outputs=[evaluation_status_msg]
+    )
+
+    # Export training data
+    export_btn.click(
+        fn=lambda min_r, path: export_training_data_action(min_r, path, chat_evaluator),
+        inputs=[min_rating, export_path],
+        outputs=[export_status]
+    )
+
     # Model change handler
     model_selector.change(
         fn=change_model,
