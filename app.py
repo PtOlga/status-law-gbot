@@ -954,8 +954,25 @@ with gr.Blocks() as demo:
                     show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
                     qa_table = gr.DataFrame(
                         get_qa_pairs_dataframe(chat_evaluator),
-                        interactive=False
-                        # Removed column_config for compatibility
+                        interactive=True,  # Делаем таблицу интерактивной
+                        wrap=True,  # Включаем перенос текста
+                        column_config={
+                            "conversation_id": gr.Column(
+                                label="Conversation ID",
+                                copy_button=True  # Добавляем кнопку копирования
+                            ),
+                            "question": gr.Column(
+                                label="Question",
+                                max_width=300,
+                                wrap=True
+                            ),
+                            "answer": gr.Column(
+                                label="Answer",
+                                max_width=300,
+                                wrap=True
+                            )
+                        },
+                        elem_id="qa_pairs_table"  # Добавляем ID для возможности стилизации
                     )
                     
                     # Conversation selection section
@@ -1016,17 +1033,21 @@ with gr.Blocks() as demo:
                 outputs=[qa_table]
             )
             
-            # Table row selection function
-            def on_table_select(evt):
+            # Обработчик выбора строки в таблице
+            def on_table_select(evt: gr.SelectData) -> str:
+                """Handle table row selection"""
                 try:
-                    return evt.value[0] if evt and hasattr(evt, 'value') and len(evt.value) > 0 else ""
+                    # evt.value содержит данные выбранной строки
+                    # Возвращаем conversation_id из первой колонки
+                    return evt.value[0]
                 except Exception as e:
-                    print(f"Error selecting table row: {str(e)}")
+                    logger.error(f"Error in table selection: {str(e)}")
                     return ""
-            
+
             # Table row selection handler
             qa_table.select(
                 fn=on_table_select,
+                inputs=[],  # Не нужны входные данные
                 outputs=[selected_conversation]
             )
             
