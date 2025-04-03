@@ -441,6 +441,41 @@ def finetune_from_chat_history(epochs: int = 3,
     
     return success, message
 
+def finetune_from_file(
+    training_file: str,
+    epochs: int = 3,
+    batch_size: int = 4,
+    learning_rate: float = 2e-4
+) -> Tuple[bool, str]:
+    """
+    Fine-tune model using training data from file
+    
+    Args:
+        training_file: Path to JSONL file with training data
+        epochs: Number of training epochs
+        batch_size: Batch size for training
+        learning_rate: Learning rate
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        # Create fine tuner instance
+        tuner = FineTuner()
+        
+        # Start training process
+        success, message = tuner.train(
+            training_data_path=training_file,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=batch_size,
+            learning_rate=learning_rate
+        )
+        
+        return success, message
+        
+    except Exception as e:
+        return False, f"Error during fine-tuning: {str(e)}"
+
 if __name__ == "__main__":
     # Usage example
     success, message = finetune_from_chat_history()
