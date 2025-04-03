@@ -965,10 +965,28 @@ with gr.Blocks() as demo:
                     
                 with gr.Column(scale=2):
                     show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
-                    qa_table = gr.DataFrame(get_qa_pairs_dataframe(chat_evaluator))
+                    qa_table = gr.DataFrame(
+                        get_qa_pairs_dataframe(chat_evaluator),
+                        interactive=False,  # Делаем таблицу неинтерактивной
+                        column_config={
+                            "ID": gr.Column(interactive=False),
+                            "Question": gr.Column(interactive=False),
+                            "Answer": gr.Column(interactive=False),
+                            "Evaluated": gr.Column(interactive=False),
+                            "delete": gr.Column(  # Добавляем колонку для удаления
+                                interactive=True,
+                                cell_type="button",
+                                text="🗑️"
+                            )
+                        }
+                    )
                     
                     gr.Markdown("### Select Conversation to Evaluate")
-                    selected_conversation = gr.Textbox(label="Conversation ID", placeholder="Select from table above")
+                    selected_conversation = gr.Textbox(
+                        label="Conversation ID", 
+                        placeholder="Select from table above",
+                        interactive=False  # Делаем поле неинтерактивным
+                    )
                     load_btn = gr.Button("Load Conversation", variant="primary")
                     
                     gr.Markdown("### Evaluate Response")
@@ -1010,9 +1028,23 @@ with gr.Blocks() as demo:
             
             # Table selection to conversation ID textbox
             qa_table.select(
-                fn=lambda df, evt: evt.value[0] if evt and evt.value and len(evt.value) > 0 else "",
+                fn=lambda df, evt: evt.data[0] if evt and hasattr(evt, 'data') and len(evt.data) > 0 else "",
                 inputs=[qa_table],
                 outputs=[selected_conversation]
+            )
+
+            # Handle row deletion
+            def delete_qa_pair(evt):
+                if evt and hasattr(evt, 'data'):
+                    conversation_id = evt.data[0]  # Получаем ID из первой колонки
+                    # Здесь добавьте логику удаления пары из базы данных
+                    return get_qa_pairs_dataframe(chat_evaluator)  # Обновляем таблицу
+                return None
+
+            qa_table.delete(
+                fn=delete_qa_pair,
+                inputs=[qa_table],
+                outputs=[qa_table]
             )
             
             # Load conversation for evaluation
