@@ -967,17 +967,24 @@ with gr.Blocks() as demo:
                     show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
                     qa_table = gr.DataFrame(
                         get_qa_pairs_dataframe(chat_evaluator),
-                        interactive=False,  # Делаем таблицу неинтерактивной
+                        interactive=False,  # Make table non-interactive
                         column_config={
-                            "ID": gr.Column(interactive=False),
-                            "Question": gr.Column(interactive=False),
-                            "Answer": gr.Column(interactive=False),
-                            "Evaluated": gr.Column(interactive=False),
-                            "delete": gr.Column(  # Добавляем колонку для удаления
-                                interactive=True,
-                                cell_type="button",
-                                text="🗑️"
-                            )
+                            "ID": {
+                                "editable": False,
+                            },
+                            "Question": {
+                                "editable": False,
+                            },
+                            "Answer": {
+                                "editable": False,
+                            },
+                            "Evaluated": {
+                                "editable": False,
+                            },
+                            "delete": {
+                                "cell_type": "button",
+                                "text": "🗑️"
+                            }
                         }
                     )
                     
@@ -985,7 +992,7 @@ with gr.Blocks() as demo:
                     selected_conversation = gr.Textbox(
                         label="Conversation ID", 
                         placeholder="Select from table above",
-                        interactive=False  # Делаем поле неинтерактивным
+                        interactive=False  # Make field non-interactive
                     )
                     load_btn = gr.Button("Load Conversation", variant="primary")
                     
@@ -1036,9 +1043,9 @@ with gr.Blocks() as demo:
             # Handle row deletion
             def delete_qa_pair(evt):
                 if evt and hasattr(evt, 'data'):
-                    conversation_id = evt.data[0]  # Получаем ID из первой колонки
-                    # Здесь добавьте логику удаления пары из базы данных
-                    return get_qa_pairs_dataframe(chat_evaluator)  # Обновляем таблицу
+                    conversation_id = evt.data[0]  # Get ID from first column
+                    # Add logic for deleting the pair from database
+                    return get_qa_pairs_dataframe(chat_evaluator)  # Update table
                 return None
 
             qa_table.delete(
