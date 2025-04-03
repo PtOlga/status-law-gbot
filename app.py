@@ -3,6 +3,9 @@ import os
 import json
 import datetime
 from pathlib import Path
+from src.analytics.chat_evaluator import ChatEvaluator
+import sys
+import logging
 from langdetect import detect  # новый импорт
 from huggingface_hub import InferenceClient, HfApi
 from config.constants import DEFAULT_SYSTEM_MESSAGE
@@ -32,8 +35,13 @@ from web.evaluation_interface import (
     generate_evaluation_report_html,
     export_training_data_action
 )
-from src.analytics.chat_evaluator import ChatEvaluator
-import sys
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
@@ -52,7 +60,7 @@ chat_evaluator = ChatEvaluator(
     chat_history_path=CHAT_HISTORY_PATH
 )
 
-print(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
+logger.info(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
 
 def load_user_preferences():
     """Load user preferences from file"""
@@ -65,7 +73,7 @@ def load_user_preferences():
             "parameters": {}
         }
     except Exception as e:
-        print(f"Error loading user preferences: {str(e)}")
+        logger.error(f"Error loading user preferences: {str(e)}")
         return {
             "selected_model": DEFAULT_MODEL,
             "parameters": {}
@@ -87,10 +95,10 @@ def save_user_preferences(model_key, parameters=None):
         with open(USER_PREFERENCES_PATH, 'w') as f:
             json.dump(preferences, f, indent=2)
         
-        print(f"User preferences saved successfully!")
+        logger.info("User preferences saved successfully!")
         return True
     except Exception as e:
-        print(f"Error saving user preferences: {str(e)}")
+        logger.error(f"Error saving user preferences: {str(e)}")
         return False
 
 def initialize_client(model_id=None):
@@ -122,10 +130,10 @@ def switch_to_model(model_key):
             token=HF_TOKEN
         )
         
-        print(f"Switched to model: {model_key}")
+        logger.info(f"Switched to model: {model_key}")
         return True
     except Exception as e:
-        print(f"Error switching to model {model_key}: {str(e)}")
+        logger.error(f"Error switching to model {model_key}: {str(e)}")
         return False
 
 def get_fallback_model(current_model):
@@ -139,12 +147,12 @@ def get_context(message, conversation_id):
     """Get context from knowledge base"""
     vector_store = load_vector_store()
     if vector_store is None:
-        print("Knowledge base not found or failed to load")
+        logger.warning("Knowledge base not found or failed to load")
         return ""
     
     # Check if vector_store is a string (error message) instead of an actual store
     if isinstance(vector_store, str):
-        print(f"Error with vector store: {vector_store}")
+        logger.error(f"Error with vector store: {vector_store}")
         return ""
     
     try:
@@ -153,11 +161,11 @@ def get_context(message, conversation_id):
         context_docs = vector_store.similarity_search(message, k=2)
         
         # Add debug logging
-        print(f"\nDebug - Query: {message}")
+        logger.debug(f"Query: {message}")
         for i, doc in enumerate(context_docs):
-            print(f"\nDebug - Context {i+1}:")
-            print(f"Source: {doc.metadata.get('source', 'unknown')}")
-            print(f"Content: {doc.page_content[:200]}...")
+            logger.debug(f"Context {i+1}:")
+            logger.debug(f"Source: {doc.metadata.get('source', 'unknown')}")
+            logger.debug(f"Content: {doc.page_content[:200]}...")
         
         # Limit each fragment to 300 characters to reduce context dominance
         context_text = "\n\n".join([f"Context from {doc.metadata.get('source', 'unknown')}: {doc.page_content[:300]}..." for doc in context_docs])
@@ -170,7 +178,7 @@ def get_context(message, conversation_id):
         
         return context_text
     except Exception as e:
-        print(f"Error getting context: {str(e)}")
+        logger.error(f"Error getting context: {str(e)}")
         return ""
 
 def post_process_response(user_message, bot_response):
@@ -180,11 +188,11 @@ def post_process_response(user_message, bot_response):
         user_lang = detect_language(user_message)
         bot_lang = detect_language(bot_response)
         
-        print(f"Debug - User language: {user_lang}, Bot response language: {bot_lang}")
+        logger.debug(f"User language: {user_lang}, Bot response language: {bot_lang}")
         
         # If languages don't match and response is long enough to detect
         if user_lang != bot_lang and len(bot_response.strip()) > 20:
-            print(f"Debug - Language mismatch detected! User: {user_lang}, Bot: {bot_lang}")
+            logger.warning(f"Language mismatch detected! User: {user_lang}, Bot: {bot_lang}")
             
             # Add language mismatch warning
             warning = f"⚠️ [Language mismatch detected. Response should be in {user_lang}]\n\n"
@@ -192,33 +200,33 @@ def post_process_response(user_message, bot_response):
         
         return bot_response
     except Exception as e:
-        print(f"Error in post_process_response: {str(e)}")
-        return bot_response  # Return original response in case of error
+        logger.error(f"Error in post_process_response: {str(e)}")
+        return bot_response
 
 def load_vector_store():
     """Load knowledge base from dataset"""
     try:
         from src.knowledge_base.dataset import DatasetManager
         
-        print("Debug - Attempting to load vector store...")
+        logger.debug("Attempting to load vector store...")
         dataset = DatasetManager()
         success, result = dataset.download_vector_store()
         
-        print(f"Debug - Download result: success={success}, result_type={type(result)}")
+        logger.debug(f"Download result: success={success}, result_type={type(result)}")
         
         if success:
             if isinstance(result, str):
-                print(f"Debug - Error message received: {result}")
+                logger.debug(f"Error message received: {result}")
                 return None
             return result
         else:
-            print(f"Debug - Failed to load vector store: {result}")
+            logger.error(f"Failed to load vector store: {result}")
             return None
             
     except Exception as e:
         import traceback
-        print(f"Exception loading knowledge base: {str(e)}")
-        print(traceback.format_exc())
+        logger.error(f"Exception loading knowledge base: {str(e)}")
+        logger.error(traceback.format_exc())
         return None
 
 def detect_language(text):
@@ -229,12 +237,11 @@ def detect_language(text):
         
         # Minimum text length for reliable detection - reduced to 5 characters
         if len(cleaned_text) < 5:
-            print(f"Text too short for reliable detection: '{cleaned_text}'")
-            # Try to detect anyway for short texts instead of defaulting to English
+            logger.debug(f"Text too short for reliable detection: '{cleaned_text}'")
             try:
                 return detect(cleaned_text)
             except:
-                return "en"  # Default only if detection fails
+                return "en"
             
         lang = detect(cleaned_text)
         
@@ -252,14 +259,14 @@ def detect_language(text):
         
         # Log detection result
         if lang not in supported_langs:
-            print(f"Detected uncommon language: {lang} for text: '{cleaned_text[:50]}...'")
+            logger.warning(f"Detected uncommon language: {lang} for text: '{cleaned_text[:50]}...'")
             
         # Return detected language even if not in supported list
         return lang
         
     except Exception as e:
-        print(f"Language detection error: {str(e)} for text: '{text[:50]}...'")
-        return "en"  # Default to English only on error
+        logger.error(f"Language detection error: {str(e)} for text: '{text[:50]}...'")
+        return "en"
 
 def respond(
     message,
@@ -275,7 +282,7 @@ def respond(
     try:
         # Determine user language
         user_lang = detect_language(message)
-        print(f"Debug - Detected user language: {user_lang}")
+        logger.debug(f"Detected user language: {user_lang}")
         
         # Add language instruction at the end of system message to increase its importance
         language_instruction = f"\nIMPORTANT: You MUST respond in {user_lang} language ONLY."
@@ -309,7 +316,7 @@ def respond(
         return new_history, conversation_id
         
     except Exception as e:
-        print(f"API Error: {str(e)}")
+        logger.error(f"API Error: {str(e)}")
         error_msg = format_friendly_error(str(e))
         
         # --- Format Error Response ---
@@ -354,9 +361,9 @@ def log_api_error(user_message, error_message, model_id, is_fallback=False):
             f.write(f"Error: {error_message}\n")
             f.write(f"Fallback attempt: {is_fallback}\n")
             
-        print(f"API error logged to {log_path}")
+        logger.info(f"API error logged to {log_path}")
     except Exception as e:
-        print(f"Failed to log API error: {str(e)}")
+        logger.error(f"Failed to log API error: {str(e)}")
 
 def update_kb():
     """Function to update existing knowledge base with new documents"""
@@ -407,7 +414,7 @@ def save_chat_history(history, conversation_id):
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(chat_data, f, ensure_ascii=False, indent=2)
         
-        print(f"Debug - Chat history saved locally to {filepath}")
+        logger.debug(f"Chat history saved locally to {filepath}")
         
         # Now upload to HuggingFace dataset
         try:
@@ -428,15 +435,15 @@ def save_chat_history(history, conversation_id):
                 repo_type="dataset"
             )
             
-            print(f"Debug - Chat history uploaded to dataset at {target_path}")
+            logger.debug(f"Chat history uploaded to dataset at {target_path}")
             
         except Exception as e:
-            print(f"Warning - Failed to upload chat history to dataset: {str(e)}")
+            logger.warning(f"Failed to upload chat history to dataset: {str(e)}")
             # Continue execution even if upload fails
         
         return True
     except Exception as e:
-        print(f"Error saving chat history: {str(e)}")
+        logger.error(f"Error saving chat history: {str(e)}")
         return False
 
 def respond_and_clear(message, history, conversation_id):
@@ -467,7 +474,7 @@ def respond_and_clear(message, history, conversation_id):
         return new_history, new_conv_id, ""  # Clear input
         
     except Exception as e:
-        print(f"Error in respond_and_clear: {str(e)}")
+        logger.error(f"Error in respond_and_clear: {str(e)}")
         
         # Create safe error response
         error_history = [
@@ -675,7 +682,7 @@ def initialize_app():
         token=HF_TOKEN
     )
     
-    print(f"App initialized with model: {ACTIVE_MODEL['name']}")
+    logger.info(f"App initialized with model: {ACTIVE_MODEL['name']}")
     return selected_model
 
 def initialize_chat_evaluator():
@@ -692,12 +699,12 @@ def initialize_chat_evaluator():
         os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
         os.makedirs(os.path.join(CHAT_HISTORY_PATH, 'evaluations'), exist_ok=True)
         
-        print(f"Debug - Chat history path: {CHAT_HISTORY_PATH}")
-        print(f"Debug - Number of chat files: {len(os.listdir(CHAT_HISTORY_PATH))}")
+        logger.debug(f"Chat history path: {CHAT_HISTORY_PATH}")
+        logger.debug(f"Number of chat files: {len(os.listdir(CHAT_HISTORY_PATH))}")
         
         return evaluator
     except Exception as e:
-        print(f"Error initializing chat evaluator: {str(e)}")
+        logger.error(f"Error initializing chat evaluator: {str(e)}")
         raise
 
 # Initialize HF client with token at startup
@@ -1062,6 +1069,6 @@ if __name__ == "__main__":
     
     # Check knowledge base availability in dataset
     if not load_vector_store():
-        print("Knowledge base not found. Please create it through the interface.")
+        logger.warning("Knowledge base not found. Please create it through the interface.")
     
     demo.launch(share=True)  
