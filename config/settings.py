@@ -22,15 +22,16 @@ API_CONFIG = {
 DATASET_ID = "Rulga/status-law-knowledge-base"
 CHAT_HISTORY_PATH = "chat_history"
 VECTOR_STORE_PATH = "vector_store"
+FINE_TUNED_PATH = "fine_tuned_models"  # новый путь
 
 # Paths configuration
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
-TRAINING_OUTPUT_DIR = os.path.join(MODEL_PATH, "fine_tuned")
+TRAINING_OUTPUT_DIR = os.path.join(CHAT_HISTORY_PATH, FINE_TUNED_PATH)  # изменённый путь
 
 # Create necessary directories if they don't exist
 os.makedirs(MODEL_PATH, exist_ok=True)
 os.makedirs(TRAINING_OUTPUT_DIR, exist_ok=True)
-MODELS_REGISTRY_PATH = os.path.join(MODEL_PATH, "registry.json")
+MODELS_REGISTRY_PATH = os.path.join(CHAT_HISTORY_PATH, "models_registry.json")  # перемещаем registry.json
 
 # Models configuration with detailed information
 MODELS = {

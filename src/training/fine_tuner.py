@@ -38,6 +38,7 @@ class FineTuner:
         self.model = None
         self.chat_analyzer = ChatAnalyzer()
         
+        # Создаём директорию для сохранения моделей в датасете
         os.makedirs(self.output_dir, exist_ok=True)
     
     def prepare_training_data(self, output_file: Optional[str] = None) -> str:

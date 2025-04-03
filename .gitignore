@@ -4,15 +4,14 @@ vector_store/
 *.faiss
 *.pkl
 
-# Chat history
+# Chat history and models
 status-law-knowledge-base/chat_history/
 chat_history/
+chat_history/fine_tuned_models/
+chat_history/models_registry.json
 *.json
 
-# Training and model files
-models/fine_tuned/
-models/registry.json
-training_output/
+# Training files
 *.bin
 *.pt
 *.pth

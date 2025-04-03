@@ -23,10 +23,6 @@ class ModelManager:
         self.registry_path = MODELS_REGISTRY_PATH
         os.makedirs(os.path.dirname(self.registry_path), exist_ok=True)
         
-        # Create empty registry if it doesn't exist
-        if not os.path.exists(self.registry_path):
-            self._save_registry([])
-
     def _load_registry(self) -> List[Dict[str, Any]]:
         """Load models registry"""
         try:
