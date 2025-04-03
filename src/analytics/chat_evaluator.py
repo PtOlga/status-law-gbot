@@ -9,31 +9,50 @@ from typing import List, Dict, Any, Tuple, Optional
 import pandas as pd
 from src.knowledge_base.dataset import DatasetManager
 from huggingface_hub import HfApi
+import io
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ChatEvaluator:
-    def __init__(self, 
-                 dataset_manager: Optional[DatasetManager] = None, 
-                 hf_token: str = None,
-                 dataset_id: str = None,
-                 chat_history_path: str = None):
+    def __init__(self, hf_token: str = None, dataset_id: str = None):
         """
         Initialize chat evaluator
         
         Args:
-            dataset_manager: Dataset manager for retrieving chat history
-            hf_token: Hugging Face token for uploading annotations
-            dataset_id: Hugging Face dataset ID
+            hf_token: Hugging Face token
+            dataset_id: Dataset ID on Hugging Face
         """
-        self.dataset_manager = dataset_manager or DatasetManager()
-        self.hf_token = hf_token
-        self.dataset_id = dataset_id
-        self.chat_history_path = chat_history_path
-        self.annotations_dir = os.path.join(os.path.dirname(chat_history_path), "annotations") if chat_history_path else None
+        self.hf_token = hf_token or os.getenv('HF_TOKEN')
+        self.dataset_id = dataset_id or "Rulga/status-law-knowledge-base"
+        self.api = HfApi(token=self.hf_token)
         
-        # Create annotations directory if it doesn't exist
-        if self.annotations_dir:
-            os.makedirs(self.annotations_dir, exist_ok=True)
-    
+        # Path for annotations in the dataset
+        self.annotations_path = "annotations"
+        
+        # Ensure annotations directory exists in dataset
+        try:
+            self._ensure_annotations_dir()
+        except Exception as e:
+            logger.error(f"Failed to ensure annotations directory: {e}")
+
+    def _ensure_annotations_dir(self):
+        """Ensure annotations directory exists in the dataset"""
+        try:
+            # Check if directory exists
+            files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
+            if self.annotations_path not in files:
+                # Create empty file to initialize directory
+                self.api.upload_file(
+                    path_or_fileobj=io.StringIO(""),
+                    path_in_repo=f"{self.annotations_path}/.gitkeep",
+                    repo_id=self.dataset_id,
+                    repo_type="dataset"
+                )
+        except Exception as e:
+            logger.error(f"Error ensuring annotations directory: {e}")
+            raise
+
     def get_chat_history(self) -> List[Dict[str, Any]]:
         """
         Get all chat history data from dataset
@@ -130,9 +149,6 @@ class ChatEvaluator:
         Returns:
             (success, message)
         """
-        if not self.annotations_dir:
-            return False, "Annotations directory not configured"
-        
         try:
             # Create annotation object
             annotation = {
@@ -146,61 +162,55 @@ class ChatEvaluator:
             }
             
             # Create filename with conversation_id
-            filename = f"annotation_{conversation_id}.json"
-            filepath = os.path.join(self.annotations_dir, filename)
+            filename = f"{self.annotations_path}/annotation_{conversation_id}.json"
             
-            # Save to local file
-            with open(filepath, 'w', encoding='utf-8') as f:
-                json.dump(annotation, f, ensure_ascii=False, indent=2)
+            # Convert to JSON string
+            json_content = json.dumps(annotation, ensure_ascii=False, indent=2)
             
-            # Upload to HuggingFace dataset if configured
-            if self.hf_token and self.dataset_id:
-                try:
-                    api = HfApi(token=self.hf_token)
-                    
-                    # Extract just the directory name from annotations_dir
-                    dir_name = os.path.basename(self.annotations_dir)
-                    target_path = f"{dir_name}/{filename}"
-                    
-                    # Upload the file to the dataset
-                    api.upload_file(
-                        path_or_fileobj=filepath,
-                        path_in_repo=target_path,
-                        repo_id=self.dataset_id,
-                        repo_type="dataset"
-                    )
-                    
-                except Exception as e:
-                    return True, f"Saved locally but failed to upload to dataset: {str(e)}"
+            # Upload to dataset
+            self.api.upload_file(
+                path_or_fileobj=io.StringIO(json_content),
+                path_in_repo=filename,
+                repo_id=self.dataset_id,
+                repo_type="dataset"
+            )
             
             return True, "Annotation saved successfully"
+            
         except Exception as e:
-            return False, f"Error saving annotation: {str(e)}"
+            logger.error(f"Error saving annotation: {e}")
+            return False, f"Failed to save annotation: {str(e)}"
     
     def get_annotations(self) -> List[Dict[str, Any]]:
         """
-        Get all saved annotations
-        
-        Returns:
-            List of annotation objects
+        Get all saved annotations from dataset
         """
-        if not self.annotations_dir or not os.path.exists(self.annotations_dir):
+        try:
+            annotations = []
+            files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
+            
+            for file in files:
+                if file.startswith(f"{self.annotations_path}/annotation_") and file.endswith(".json"):
+                    try:
+                        # Download and parse annotation file
+                        content = self.api.hf_hub_download(
+                            repo_id=self.dataset_id,
+                            filename=file,
+                            repo_type="dataset"
+                        )
+                        with open(content, 'r', encoding='utf-8') as f:
+                            annotation = json.load(f)
+                            annotations.append(annotation)
+                    except Exception as e:
+                        logger.error(f"Error loading annotation {file}: {e}")
+            
+            # Sort by timestamp (newest first)
+            annotations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            return annotations
+            
+        except Exception as e:
+            logger.error(f"Error getting annotations: {e}")
             return []
-        
-        annotations = []
-        for filename in os.listdir(self.annotations_dir):
-            if filename.startswith("annotation_") and filename.endswith(".json"):
-                try:
-                    filepath = os.path.join(self.annotations_dir, filename)
-                    with open(filepath, 'r', encoding='utf-8') as f:
-                        annotation = json.load(f)
-                        annotations.append(annotation)
-                except Exception as e:
-                    print(f"Error loading annotation {filename}: {str(e)}")
-        
-        # Sort by timestamp (newest first)
-        annotations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
-        return annotations
     
     def get_annotation_by_conversation_id(self, conversation_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -319,6 +329,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 
