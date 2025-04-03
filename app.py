@@ -14,7 +14,8 @@ from config.settings import (
     DATASET_ID,
     CHAT_HISTORY_PATH,
     VECTOR_STORE_PATH,
-    DEFAULT_MODEL
+    DEFAULT_MODEL,
+    API_CONFIG 
 )
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
@@ -38,138 +39,8 @@ if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
 # Enhanced model details for UI
-# Enhanced model details for UI
-MODEL_DETAILS = {
-    "llama-7b": {
-        "full_name": "Meta Llama 2 7B Chat",
-        "capabilities": [
-            "Multilingual support ",
-            "Good performance on legal texts",
-            "Free model with open license",
-            "Can run on computers with 16GB+ RAM"
-        ],
-        "limitations": [
-            "Limited knowledge of specific legal terminology",
-            "May provide incorrect answers to complex legal questions",
-            "Knowledge is limited to training data"
-        ],
-        "use_cases": [
-            "Legal document analysis",
-            "Answering general legal questions",
-            "Searching through legal knowledge base",
-            "Assistance in document drafting"
-        ],
-        "documentation": "https://huggingface.co/meta-llama/Llama-2-7b-chat-hf"
-    },
-    "zephyr-7b": {
-        "full_name": "HuggingFaceH4 Zephyr 7B Beta",
-        "capabilities": [
-            "High performance on instruction-following tasks",
-            "Good response accuracy",
-            "Advanced reasoning capabilities",
-            "Excellent text generation quality"
-        ],
-        "limitations": [
-            "May require paid API for usage",
-            "Limited support for languages other than English",
-            "Less optimization for legal topics compared to specialized models"
-        ],
-        "use_cases": [
-            "Complex legal reasoning",
-            "Case analysis",
-            "Legal research",
-            "Structured legal text generation"
-        ],
-        "documentation": "https://huggingface.co/HuggingFaceH4/zephyr-7b-beta"
-    },
-    "mistral-7b": {
-        "full_name": "Mistral 7B Instruct v0.2",
-        "capabilities": [
-            "Strong multilingual support",
-            "Superior instruction following ability",
-            "Fast inference speed",
-            "Excellent reasoning capabilities",
-            "Free for commercial use"
-        ],
-        "limitations": [
-            "May have limited knowledge of specialized legal terminology",
-            "Less exposure to legal domain than specialized models",
-            "Knowledge cutoff before latest legal developments"
-        ],
-        "use_cases": [
-            "Multilingual legal assistance",
-            "Cross-border legal questions",
-            "Clear explanations of complex legal topics",
-            "Serving international clients in their native language"
-        ],
-        "documentation": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
-    },
-    "xglm-7.5b": {
-        "full_name": "Meta XGLM 7.5B",
-        "capabilities": [
-            "Specialized for multilingual generation",
-            "Support for 30+ languages",
-            "Strong cross-lingual transfer abilities",
-            "Consistent performance across diverse languages"
-        ],
-        "limitations": [
-            "Less instruction-tuned than dedicated chat models",
-            "May require more specific prompting",
-            "Not specifically optimized for legal domain",
-            "Slightly larger model requiring more GPU memory"
-        ],
-        "use_cases": [
-            "International legal assistance in native languages",
-            "Complex multilingual documentation",
-            "Serving clients from diverse linguistic backgrounds",
-            "Translation and summarization of legal concepts across languages"
-        ],
-        "documentation": "https://huggingface.co/facebook/xglm-7.5B"
-    }
-}
 # MODEL_DETAILS = {
-#     "llama-7b": {
-#         "full_name": "Meta Llama 2 7B Chat",
-#         "capabilities": [
-#             "Multilingual support ",
-#             "Good performance on legal texts",
-#             "Free model with open license",
-#             "Can run on computers with 16GB+ RAM"
-#         ],
-#         "limitations": [
-#             "Limited knowledge of specific legal terminology",
-#             "May provide incorrect answers to complex legal questions",
-#             "Knowledge is limited to training data"
-#         ],
-#         "use_cases": [
-#             "Legal document analysis",
-#             "Answering general legal questions",
-#             "Searching through legal knowledge base",
-#             "Assistance in document drafting"
-#         ],
-#         "documentation": "https://huggingface.co/meta-llama/Llama-2-7b-chat-hf"
-#     },
-#     "zephyr-7b": {
-#         "full_name": "HuggingFaceH4 Zephyr 7B Beta",
-#         "capabilities": [
-#             "High performance on instruction-following tasks",
-#             "Good response accuracy",
-#             "Advanced reasoning capabilities",
-#             "Excellent text generation quality"
-#         ],
-#         "limitations": [
-#             "May require paid API for usage",
-#             "Limited support for languages other than English",
-#             "Less optimization for legal topics compared to specialized models"
-#         ],
-#         "use_cases": [
-#             "Complex legal reasoning",
-#             "Case analysis",
-#             "Legal research",
-#             "Structured legal text generation"
-#         ],
-#         "documentation": "https://huggingface.co/HuggingFaceH4/zephyr-7b-beta"
-#     }
+
 # }
 
 # Path for user preferences file
@@ -570,10 +441,10 @@ def update_model_info(model_key):
 
 def get_model_details_html(model_key):
     """Get detailed HTML for model information panel"""
-    if model_key not in MODEL_DETAILS:
+    if model_key not in MODELS or 'details' not in MODELS[model_key]:
         return "<p>Model information not available</p>"
     
-    details = MODEL_DETAILS[model_key]
+    details = MODELS[model_key]['details']
     
     html = f"""
     <div style="padding: 15px; border: 1px solid #ccc; border-radius: 5px; margin-top: 10px;">
