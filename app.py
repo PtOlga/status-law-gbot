@@ -939,35 +939,11 @@ with gr.Blocks() as demo:
             gr.Markdown("### Evaluation of Chat Responses")
             
             with gr.Row():
-                with gr.Column(scale=1):
-                    evaluation_status = gr.Markdown(get_evaluation_status(chat_evaluator))
-                    refresh_status_btn = gr.Button("Refresh Status")
-                    
-                    gr.Markdown("### Evaluation Metrics")
-                    evaluation_report = gr.HTML(generate_evaluation_report_html(chat_evaluator))
-                    refresh_report_btn = gr.Button("Refresh Report")
-                    
-                    gr.Markdown("### Export for Training")
-                    with gr.Row():
-                        min_rating = gr.Slider(
-                            minimum=1, 
-                            maximum=5, 
-                            value=4, 
-                            step=0.5, 
-                            label="Minimum Average Rating"
-                        )
-                        export_path = gr.Textbox(
-                            label="Export File Path (optional)",
-                            placeholder="Leave empty for default path"
-                        )
-                    export_btn = gr.Button("Export Annotated Data", variant="primary")
-                    export_status = gr.Textbox(label="Export Status", interactive=False)
-                    
                 with gr.Column(scale=2):
                     show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
                     qa_table = gr.DataFrame(
                         get_qa_pairs_dataframe(chat_evaluator),
-                        interactive=False,  # Make table non-interactive
+                        interactive=False,
                         column_config={
                             "ID": {
                                 "editable": False,
@@ -980,10 +956,6 @@ with gr.Blocks() as demo:
                             },
                             "Evaluated": {
                                 "editable": False,
-                            },
-                            "delete": {
-                                "cell_type": "button",
-                                "text": "🗑️"
                             }
                         }
                     )
@@ -992,9 +964,29 @@ with gr.Blocks() as demo:
                     selected_conversation = gr.Textbox(
                         label="Conversation ID", 
                         placeholder="Select from table above",
-                        interactive=False  # Make field non-interactive
+                        interactive=False
                     )
-                    load_btn = gr.Button("Load Conversation", variant="primary")
+
+                    # Define event handlers outside of the UI definition
+                    def on_table_select(evt: gr.SelectData):
+                        if evt.value:
+                            return evt.value[0]  # Return the ID from the first column
+                        return ""
+
+                    def on_show_evaluated_change(show: bool):
+                        return get_qa_pairs_dataframe(chat_evaluator, show_evaluated=show)
+
+                    # Connect event handlers
+                    qa_table.select(
+                        fn=on_table_select,
+                        outputs=selected_conversation
+                    )
+
+                    show_evaluated.change(
+                        fn=on_show_evaluated_change,
+                        inputs=show_evaluated,
+                        outputs=qa_table
+                    )
                     
                     gr.Markdown("### Evaluate Response")
                     question_display = gr.Textbox(label="User Question", interactive=False)
