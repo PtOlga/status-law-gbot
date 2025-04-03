@@ -402,19 +402,41 @@ def finetune_from_chat_history(epochs: int = 3,
     """
     # Analyze chats and prepare data
     analyzer = ChatAnalyzer()
-    report = analyzer.generate_analytics_report()
+    report = analyzer.analyze_chats()
     
-    # Check if there's enough data
-    if report["qa_pairs_count"] < 10:
-        return False, f"Insufficient data for fine-tuning. Only {report['qa_pairs_count']} QA pairs found."
+    if not report or "Failed to load chat history" in report:
+        return False, "Failed to load chat history for training"
+    
+    # Extract QA pairs for training
+    qa_pairs = analyzer.extract_question_answer_pairs()
+    
+    if len(qa_pairs) < 10:
+        return False, f"Insufficient data for fine-tuning. Only {len(qa_pairs)} QA pairs found."
+    
+    # Create temporary file for training data
+    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
+        for pair in qa_pairs:
+            json.dump({
+                "messages": [
+                    {"role": "user", "content": pair["question"]},
+                    {"role": "assistant", "content": pair["answer"]}
+                ]
+            }, f, ensure_ascii=False)
+            f.write('\n')
+        training_data_path = f.name
     
     # Create and start fine-tuning process
     tuner = FineTuner()
     success, message = tuner.prepare_and_train(
+        training_data_path=training_data_path,
         num_train_epochs=epochs,
         per_device_train_batch_size=batch_size,
         learning_rate=learning_rate
     )
+    
+    # Cleanup
+    if os.path.exists(training_data_path):
+        os.remove(training_data_path)
     
     return success, message
 
