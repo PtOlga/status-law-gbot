@@ -184,10 +184,15 @@ def get_context(message, conversation_id):
 def translate_with_llm(text: str, target_lang: str) -> str:
     """Translate text using the active LLM"""
     try:
-        prompt = f"Translate this text to {target_lang}. Provide ONLY the translation, without any explanations or meta information:\n\n{text}"
+        prompt = (
+            f"Translate the following text to {target_lang}. "
+            f"Provide ONLY the direct translation, no explanations or additional text. "
+            f"Maintain the same tone and style:\n\n{text}"
+        )
         
         response = client.chat_completion(
             messages=[
+                {"role": "system", "content": "You are a professional translator."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=ACTIVE_MODEL['parameters']['max_length'],
