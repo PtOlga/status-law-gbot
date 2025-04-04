@@ -14,6 +14,13 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+from config.settings import (
+    DATASET_ID,
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_ANNOTATIONS_PATH,
+    HF_TOKEN
+)
+
 class ChatEvaluator:
     def __init__(self, hf_token: str = None, dataset_id: str = None):
         """
@@ -23,26 +30,36 @@ class ChatEvaluator:
             hf_token: Hugging Face token
             dataset_id: Dataset ID on Hugging Face
         """
-        self.hf_token = hf_token or os.getenv('HF_TOKEN')
-        self.dataset_id = dataset_id or "Rulga/status-law-knowledge-base"
+        self.hf_token = hf_token or HF_TOKEN
+        self.dataset_id = dataset_id or DATASET_ID
         self.api = HfApi(token=self.hf_token)
         
-        # Path for annotations in the dataset
-        self.annotations_path = "annotations"
+        # Use dataset paths
+        self.chat_history_path = DATASET_CHAT_HISTORY_PATH
+        self.annotations_path = DATASET_ANNOTATIONS_PATH
         
-        # Ensure annotations directory exists in dataset
+        # Ensure directories exist in dataset
         try:
-            self._ensure_annotations_dir()
+            self._ensure_dataset_structure()
         except Exception as e:
-            logger.error(f"Failed to ensure annotations directory: {e}")
+            logger.error(f"Failed to ensure dataset structure: {e}")
 
-    def _ensure_annotations_dir(self):
-        """Ensure annotations directory exists in the dataset"""
+    def _ensure_dataset_structure(self):
+        """Ensure required directories exist in dataset"""
         try:
-            # Check if directory exists
             files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
+            
+            # Check and create chat history directory
+            if self.chat_history_path not in files:
+                self.api.upload_file(
+                    path_or_fileobj=io.StringIO(""),
+                    path_in_repo=f"{self.chat_history_path}/.gitkeep",
+                    repo_id=self.dataset_id,
+                    repo_type="dataset"
+                )
+            
+            # Check and create annotations directory
             if self.annotations_path not in files:
-                # Create empty file to initialize directory
                 self.api.upload_file(
                     path_or_fileobj=io.StringIO(""),
                     path_in_repo=f"{self.annotations_path}/.gitkeep",
@@ -50,7 +67,7 @@ class ChatEvaluator:
                     repo_type="dataset"
                 )
         except Exception as e:
-            logger.error(f"Error ensuring annotations directory: {e}")
+            logger.error(f"Error ensuring dataset structure: {e}")
             raise
 
     def get_chat_history(self) -> List[Dict[str, Any]]:
@@ -329,6 +346,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 

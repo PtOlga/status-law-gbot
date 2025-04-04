@@ -56,8 +56,7 @@ context_store = {}
 fallback_model_attempted = False
 chat_evaluator = ChatEvaluator(
     hf_token=HF_TOKEN,
-    dataset_id=DATASET_ID,
-    chat_history_path=CHAT_HISTORY_PATH
+    dataset_id=DATASET_ID
 )
 
 logger.info(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
