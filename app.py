@@ -180,7 +180,62 @@ def get_context(message, conversation_id):
     except Exception as e:
         logger.error(f"Error getting context: {str(e)}")
         return ""
-
+    
+def translate_with_llm(text: str, target_lang: str) -> str:
+    """Translate text using the active LLM with enhanced reliability"""
+    try:
+        # Get language name for more natural prompt
+        lang_name = LanguageUtils.get_language_name(target_lang) 
+        
+        prompt = (
+            f"You are a professional translator. Translate the following text to {lang_name} ({target_lang}). "
+            f"Keep the same formatting, links, and technical terms. "
+            f"Maintain the same tone and style. " 
+            f"Respond ONLY with the direct translation without any explanations or additional text:\n\n"
+            f"{text}"
+        )
+        
+        response = client.chat_completion(
+            messages=[
+                {"role": "system", "content": "You are a professional translator. Respond ONLY with the translation."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=ACTIVE_MODEL['parameters']['max_length'],
+            temperature=0.3,  # Lower temperature for more reliable output
+            top_p=0.95,
+            stream=False
+        )
+        
+        translated_text = response.choices[0].message.content.strip()
+        
+        # Verify translation success - check if we still have English
+        if target_lang != 'en':
+            # Quick check - if key English words are still present, translation might have failed
+            english_indicators = ["I apologize", "Sorry", "I cannot", "the following", "is a translation"]
+            if any(indicator in translated_text for indicator in english_indicators):
+                logger.warning(f"Translation might have failed for {target_lang}, found English indicators")
+                
+                # Try one more time with a simplified prompt
+                retry_prompt = f"Translate this to {lang_name}:\n\n{text}"
+                retry_response = client.chat_completion(
+                    messages=[
+                        {"role": "system", "content": "You are a translator."},
+                        {"role": "user", "content": retry_prompt}
+                    ],
+                    max_tokens=ACTIVE_MODEL['parameters']['max_length'],
+                    temperature=0.3,
+                    top_p=0.95,
+                    stream=False
+                )
+                
+                translated_text = retry_response.choices[0].message.content.strip()
+        
+        return translated_text
+        
+    except Exception as e:
+        logger.error(f"Translation failed: {e}")
+        return text
+    
 def post_process_response(user_message, bot_response):
     """Enhanced post-processing of bot responses to ensure correct language"""
     try:
@@ -234,40 +289,6 @@ def post_process_response(user_message, bot_response):
                 return apology + bot_response
         
         return translated_response
-        
-    except Exception as e:
-        logger.error(f"Post-processing error: {e}")
-        return bot_response
-
-def post_process_response(user_message, bot_response):
-    """Check if the response language matches the user's language and translate if needed"""
-    try:
-        user_lang = detect_language(user_message)
-        bot_lang = detect_language(bot_response)
-        
-        # Check if user language is supported using LanguageUtils
-        if user_lang not in LanguageUtils.SUPPORTED_LANGUAGES:
-            apology = ("I apologize, but I cannot respond in your language. "
-                      "I will answer in English instead.\n\n")
-            return apology + bot_response
-            
-        if user_lang != bot_lang and len(bot_response.strip()) > 20:
-            logger.warning(f"Language mismatch detected! User: {user_lang}, Bot: {bot_lang}")
-            
-            translated_response = translate_with_llm(bot_response, user_lang)
-            translated_lang = detect_language(translated_response)
-            
-            if translated_lang == user_lang:
-                logger.info(f"Response automatically translated from {bot_lang} to {user_lang}")
-                return translated_response
-            else:
-                logger.error(f"Translation failed: got {translated_lang} instead of {user_lang}")
-                # If translation fails, return English response with apology
-                apology = ("I apologize, but I cannot translate my response to your language. "
-                          "Here is my answer in English:\n\n")
-                return apology + bot_response
-            
-        return bot_response
         
     except Exception as e:
         logger.error(f"Post-processing error: {e}")
