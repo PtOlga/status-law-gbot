@@ -329,18 +329,18 @@ def detect_language(text: str) -> str:
             return "en"
             
         # First detection with langdetect
-        from langdetect import detect, LangDetectException
+        from langdetect import detect, LangDetectException, DetectorFactory
         
         try:
+            # Initialize DetectorFactory once
+            DetectorFactory.seed = 0  # For consistent results
+            
             lang_code = detect(text.strip())
             logger.debug(f"Detected language: {lang_code}")
             
             # Verify detection with confidence check by analyzing a larger portion of text
             if len(text) > 50:
-                from langdetect import DetectorFactory
-                DetectorFactory.seed = 0  # For consistent results
-                
-                detector = DetectorFactory.create()
+                detector = DetectorFactory().create()  # Правильное создание детектора
                 detector.append(text)
                 lang_probabilities = detector.get_probabilities()
                 
