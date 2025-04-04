@@ -753,8 +753,6 @@ with gr.Blocks() as demo:
                 [msg, chatbot, conversation_id],
                 [chatbot, conversation_id, msg]
             )
-            update_kb_btn.click(update_kb, None, kb_status)
-            rebuild_kb_btn.click(rebuild_kb, None, kb_status)
             
             clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
 
