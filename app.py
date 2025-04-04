@@ -737,26 +737,18 @@ with gr.Blocks() as demo:
                             label="Your question",
                             placeholder="Enter your question...",
                             scale=4
-                        ).style(container=False)  # Используем style вместо submit_on_enter
+                        )
                         submit_btn = gr.Button("Send", variant="primary")
-                        clear_btn = gr.Button("Clear")  # Add clear button
-                
-                with gr.Column(scale=1):
-                    gr.Markdown("### Knowledge Base Management")
-                    gr.Markdown("""
-                    - **Update**: Add new documents to existing base
-                    - **Rebuild**: Create new base from scratch
-                    """)
-                    with gr.Row():
-                        update_kb_btn = gr.Button("📝 Update Base", variant="secondary", scale=1)
-                        rebuild_kb_btn = gr.Button("🔄 Rebuild Base", variant="primary", scale=1)
-                    kb_status = gr.Textbox(
-                        label="Status",
-                        placeholder="Knowledge base status will appear here...",
-                        interactive=False
-                    )
+                        clear_btn = gr.Button("Clear")
 
+            # Add event handlers
             submit_btn.click(
+                respond_and_clear,
+                [msg, chatbot, conversation_id],
+                [chatbot, conversation_id, msg]
+            )
+            # Add Enter key handler
+            msg.submit(
                 respond_and_clear,
                 [msg, chatbot, conversation_id],
                 [chatbot, conversation_id, msg]
