@@ -276,11 +276,17 @@ def respond(
 ):
     """Generate response with proper error handling"""
     try:
-        # Determine user language
+        # Reset and determine user language for new request
         user_lang = detect_language(message)
         logger.debug(f"Detected user language: {user_lang}")
         
-        # Add language instruction at the end of system message to increase its importance
+        # Create clean history without system messages
+        clean_history = [
+            msg for msg in history 
+            if msg["role"] != "system"
+        ]
+        
+        # Add fresh system message with current language instruction
         language_instruction = f"\nIMPORTANT: You MUST respond in {user_lang} language ONLY."
         full_system_message = system_message + language_instruction
         
@@ -288,7 +294,7 @@ def respond(
         response = client.chat_completion(
             messages=[
                 {"role": "system", "content": full_system_message},
-                *history,
+                *clean_history,
                 {"role": "user", "content": message}
             ],
             max_tokens=max_tokens,
@@ -304,13 +310,12 @@ def respond(
         
         # --- Format Successful Response ---
         new_history = [
-            *history,
+            *clean_history,
             {"role": "user", "content": message},
             {"role": "assistant", "content": processed_response}
         ]
         
         return new_history, conversation_id
-        
     except Exception as e:
         logger.error(f"API Error: {str(e)}")
         error_msg = format_friendly_error(str(e))
@@ -731,7 +736,8 @@ with gr.Blocks() as demo:
                         msg = gr.Textbox(
                             label="Your question",
                             placeholder="Enter your question...",
-                            scale=4
+                            scale=4,
+                            submit_on_enter=True  # Enable Enter key submission
                         )
                         submit_btn = gr.Button("Send", variant="primary")
                         clear_btn = gr.Button("Clear")  # Add clear button
