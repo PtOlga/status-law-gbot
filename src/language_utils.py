@@ -10,89 +10,84 @@ DetectorFactory.seed = 0
 logger = logging.getLogger(__name__)
 
 class LanguageUtils:
-    """Centralized class for language processing"""
+    """Utility class for language operations"""
     
-    # Supported languages (can be extended)
-    SUPPORTED_LANGUAGES = ["en", "ru", "uk", "de", "fr", "es", "it", "pt"]
+    SUPPORTED_LANGUAGES = {
+        # Common European languages
+        'en': 'English',
+        'ru': 'Russian',
+        'de': 'German',
+        'fr': 'French',
+        'es': 'Spanish',
+        'it': 'Italian',
+        'pt': 'Portuguese',
+        'nl': 'Dutch',
+        'pl': 'Polish',
+        'sv': 'Swedish',
+        'no': 'Norwegian',
+        'da': 'Danish',
+        'fi': 'Finnish',
+        
+        # Asian languages
+        'zh': 'Chinese',
+        'ja': 'Japanese',
+        'ko': 'Korean',
+        
+        # Other widely used languages
+        'ar': 'Arabic',
+        'hi': 'Hindi',
+        'tr': 'Turkish',
+        'cs': 'Czech',
+        'uk': 'Ukrainian',
+        'bg': 'Bulgarian',
+        'el': 'Greek',
+        'he': 'Hebrew',
+        'th': 'Thai',
+        'vi': 'Vietnamese',
+        'hu': 'Hungarian',
+        'sk': 'Slovak',
+        'ro': 'Romanian',
+        'id': 'Indonesian',
+        'ms': 'Malay',
+    }
     
     @classmethod
-    def detect_language(cls, text: str, default: str = "en") -> str:
-        """
-        Detects text language with enhanced error handling
-        
-        Args:
-            text: Text to analyze
-            default: Default language in case of error
-            
-        Returns:
-            Language code (ISO 639-1)
-        """
-        try:
-            # Minimum length for reliable detection
-            if len(text.strip()) < 15:
-                logger.warning(f"Text too short for reliable detection: '{text}'")
-                return default
-                
-            lang = detect(text)
-            
-            # Check language support
-            if lang not in cls.SUPPORTED_LANGUAGES:
-                logger.warning(f"Unsupported language detected: {lang}. Defaulting to {default}")
-                return default
-                
-            logger.debug(f"Detected language: {lang} for text: '{text[:50]}...'")
-            return lang
-            
-        except Exception as e:
-            logger.error(f"Language detection failed: {str(e)}. Text: '{text[:100]}...'")
-            return default
+    def get_language_name(cls, lang_code: str) -> str:
+        """Get language name from code"""
+        return cls.SUPPORTED_LANGUAGES.get(lang_code, "Unknown")
     
     @classmethod
-    def get_language_instruction(cls, target_lang: str, user_message: str) -> str:
+    def is_supported(cls, lang_code: str) -> bool:
+        """Check if language is supported"""
+        return lang_code in cls.SUPPORTED_LANGUAGES
+    
+    @classmethod
+    def get_closest_supported_language(cls, lang_code: str) -> str:
         """
-        Generates strict response language instructions
+        Get the closest supported language code
         
-        Args:
-            target_lang: Language the bot should respond in
-            user_message: Original user message
-            
-        Returns:
-            String with prompt instructions
+        This helps with similar language detection issues
+        like confusing 'no' (Norwegian) with 'da' (Danish)
         """
-        instructions = {
-            "en": f"CRITICAL: Respond in English only. Never switch languages.\n\nOriginal message: {user_message}",
-            "ru": f"ВАЖНО: Отвечайте только на русском. Не переключайтесь на другие языки.\n\nОригинальное сообщение: {user_message}",
-            "uk": f"ВАЖЛИВО: Відповідайте лише українською. Не змінюйте мову.\n\nОригінальне повідомлення: {user_message}",
-            "de": f"KRITISCH: Antworten Sie nur auf Deutsch. Wechseln Sie nie die Sprache.\n\nOriginalnachricht: {user_message}",
-            "fr": f"CRITIQUE: Répondez uniquement en français. Ne changez jamais de langue.\n\nMessage original: {user_message}",
-            "es": f"CRÍTICO: Responda sólo en español. Nunca cambie de idioma.\n\nMensaje original: {user_message}",
-            "it": f"IMPORTANTE: Rispondere solo in italiano. Non cambiare lingua.\n\nMessaggio originale: {user_message}",
-            "pt": f"CRÍTICO: Responda apenas em português. Nunca mude de idioma.\n\nMensagem original: {user_message}"
+        if lang_code in cls.SUPPORTED_LANGUAGES:
+            return lang_code
+            
+        # Language mapping for commonly confused languages
+        similar_languages = {
+            'nb': 'no',  # Norwegian Bokmål → Norwegian
+            'nn': 'no',  # Norwegian Nynorsk → Norwegian
+            'zh-cn': 'zh',  # Chinese Simplified → Chinese 
+            'zh-tw': 'zh',  # Chinese Traditional → Chinese
+            'hr': 'sr',  # Croatian → Serbian (similar)
+            'bs': 'sr',  # Bosnian → Serbian (similar)
+            'mk': 'bg',  # Macedonian → Bulgarian (similar)
+            'be': 'ru',  # Belarusian → Russian (similar)
+            'ca': 'es',  # Catalan → Spanish (similar)
+            'gl': 'pt',  # Galician → Portuguese (similar)
+            'af': 'nl',  # Afrikaans → Dutch (similar)
         }
         
-        return instructions.get(target_lang, instructions["en"])
+        return similar_languages.get(lang_code, "en")
     
-    @classmethod
-    def validate_response_language(cls, response: str, expected_lang: str) -> bool:
-        """
-        Validates if response language matches expected language
-        
-        Args:
-            response: Bot's response
-            expected_lang: Expected language (ISO 639-1)
-            
-        Returns:
-            True if language matches, False if not
-        """
-        try:
-            detected_lang = cls.detect_language(response)
-            if detected_lang != expected_lang:
-                logger.warning(f"Language mismatch! Expected {expected_lang}, got {detected_lang}")
-                return False
-            return True
-        except Exception as e:
-            logger.error(f"Language validation failed: {str(e)}")
-            return False
-
 # Create instance for convenient import
 language_processor = LanguageUtils()

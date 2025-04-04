@@ -181,31 +181,63 @@ def get_context(message, conversation_id):
         logger.error(f"Error getting context: {str(e)}")
         return ""
 
-def translate_with_llm(text: str, target_lang: str) -> str:
-    """Translate text using the active LLM"""
+def post_process_response(user_message, bot_response):
+    """Enhanced post-processing of bot responses to ensure correct language"""
     try:
-        prompt = (
-            f"Translate the following text to {target_lang}. "
-            f"Provide ONLY the direct translation, no explanations or additional text. "
-            f"Maintain the same tone and style:\n\n{text}"
-        )
+        user_lang = detect_language(user_message)
+        # Convert to closest supported language
+        user_lang = LanguageUtils.get_closest_supported_language(user_lang)
         
-        response = client.chat_completion(
-            messages=[
-                {"role": "system", "content": "You are a professional translator."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=ACTIVE_MODEL['parameters']['max_length'],
-            temperature=0.3,
-            top_p=0.9,
-            stream=False
-        )
+        logger.info(f"User language detected: {user_lang} ({LanguageUtils.get_language_name(user_lang)})")
         
-        return response.choices[0].message.content.strip()
+        # If English, no need to translate
+        if user_lang == 'en':
+            return bot_response
+            
+        # Check if language is supported
+        if not LanguageUtils.is_supported(user_lang):
+            logger.warning(f"Unsupported language: {user_lang}")
+            apology = ("I apologize, but I cannot respond in your language. "
+                      "I will answer in English instead.\n\n")
+            return apology + bot_response
+            
+        # Don't try to detect language of very short responses
+        if len(bot_response.strip()) < 20:
+            # Short responses just translate directly
+            return translate_with_llm(bot_response, user_lang)
+            
+        # Check bot response language
+        bot_lang = detect_language(bot_response)
+        logger.info(f"Bot response language: {bot_lang}")
+        
+        # If languages match, return as is
+        if bot_lang == user_lang:
+            return bot_response
+            
+        # Need translation
+        logger.warning(f"Language mismatch! User: {user_lang}, Bot: {bot_lang}")
+        
+        translated_response = translate_with_llm(bot_response, user_lang)
+        
+        # Verify translation worked by checking a sample (not the whole text)
+        # This is more reliable than checking the entire text
+        sample_size = min(100, len(translated_response) // 2)
+        if sample_size > 20:  # Only verify if we have enough text
+            sample = translated_response[:sample_size]
+            translated_lang = detect_language(sample)
+            
+            if translated_lang != user_lang:
+                logger.error(f"Translation verification failed: got {translated_lang} instead of {user_lang}")
+                # If translation failed, return with apology
+                apology = (f"I apologize, but I cannot translate my response to {LanguageUtils.get_language_name(user_lang)}. "
+                          "Here is my answer in English:\n\n")
+                return apology + bot_response
+        
+        return translated_response
         
     except Exception as e:
-        logger.error(f"Translation failed: {e}")
-        return text
+        logger.error(f"Post-processing error: {e}")
+        return bot_response
 
 def post_process_response(user_message, bot_response):
     """Check if the response language matches the user's language and translate if needed"""
@@ -268,14 +300,39 @@ def load_vector_store():
         return None
 
 def detect_language(text: str) -> str:
-    """Detect language with fallback"""
+    """Enhanced language detection with better handling of edge cases"""
     try:
-        if len(text.strip()) < 5:
+        # If text is too short, don't try to detect
+        if len(text.strip()) < 10:
             logger.debug(f"Text too short for reliable detection: '{text}'")
             return "en"
             
-        return detect(text.strip())
+        # First detection with langdetect
+        from langdetect import detect, LangDetectException
         
+        try:
+            lang_code = detect(text.strip())
+            logger.debug(f"Detected language: {lang_code}")
+            
+            # Verify detection with confidence check by analyzing a larger portion of text
+            if len(text) > 50:
+                from langdetect import DetectorFactory
+                DetectorFactory.seed = 0  # For consistent results
+                
+                detector = DetectorFactory.create()
+                detector.append(text)
+                lang_probabilities = detector.get_probabilities()
+                
+                # If top language has low probability, fallback to English
+                if lang_probabilities and lang_probabilities[0].prob < 0.5:
+                    logger.warning(f"Low confidence detection ({lang_probabilities[0].prob:.2f}) for '{lang_code}', defaulting to English")
+                    return "en"
+            
+            return lang_code
+        except LangDetectException as e:
+            logger.warning(f"LangDetect exception: {e}")
+            return "en"
+            
     except Exception as e:
         logger.error(f"Language detection error: {str(e)} for text: '{text[:50]}...'")
         return "en"
@@ -290,11 +347,12 @@ def respond(
     top_p,
     attempt_fallback=True
 ):
-    """Generate response with proper error handling"""
+    """Generate response with improved language handling"""
     try:
         # Reset and determine user language for new request
         user_lang = detect_language(message)
-        logger.debug(f"Detected user language: {user_lang}")
+        user_lang = LanguageUtils.get_closest_supported_language(user_lang)
+        logger.info(f"User language detected for request: {user_lang} ({LanguageUtils.get_language_name(user_lang)})")
         
         # Create clean history without system messages
         clean_history = [
@@ -302,9 +360,15 @@ def respond(
             if msg["role"] != "system"
         ]
         
-        # Add fresh system message with current language instruction
-        language_instruction = f"\nIMPORTANT: You MUST respond in {user_lang} language ONLY."
-        full_system_message = system_message + language_instruction
+        # Remove language instruction from system message to avoid confusion
+        base_system_message = system_message.split("\nIMPORTANT:")[0] if "\nIMPORTANT:" in system_message else system_message
+        
+        # Always request English response, we'll translate later
+        full_system_message = (
+            f"{base_system_message}\n\n"
+            f"IMPORTANT: Always respond in English, no matter what language the user speaks. "
+            f"Provide a complete and helpful response - we will handle translation separately."
+        )
         
         # --- API Request ---
         response = client.chat_completion(
@@ -321,7 +385,7 @@ def respond(
         
         bot_response = response.choices[0].message.content
         
-        # Post-process response to check language
+        # Post-process response to translate if needed
         processed_response = post_process_response(message, bot_response)
         
         # --- Format Successful Response ---
