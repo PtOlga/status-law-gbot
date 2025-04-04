@@ -180,26 +180,49 @@ def get_context(message, conversation_id):
         logger.error(f"Error getting context: {str(e)}")
         return ""
 
-def post_process_response(user_message, bot_response):
-    """Check if the response language matches the user's language and fix if needed"""
+def translate_with_llm(text: str, target_lang: str) -> str:
+    """Translate text using the active LLM"""
     try:
-        # Detect languages
+        prompt = f"Translate this text to {target_lang}:\n\n{text}"
+        
+        response = client.chat_completion(
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=ACTIVE_MODEL['parameters']['max_length'],
+            temperature=0.3,
+            top_p=0.9,
+            stream=False
+        )
+        
+        return response.choices[0].message.content.strip()
+        
+    except Exception as e:
+        logger.error(f"Translation failed: {e}")
+        return text
+
+def post_process_response(user_message, bot_response):
+    """Check if the response language matches the user's language and translate if needed"""
+    try:
         user_lang = detect_language(user_message)
         bot_lang = detect_language(bot_response)
         
-        logger.debug(f"User language: {user_lang}, Bot response language: {bot_lang}")
-        
-        # If languages don't match and response is long enough to detect
         if user_lang != bot_lang and len(bot_response.strip()) > 20:
             logger.warning(f"Language mismatch detected! User: {user_lang}, Bot: {bot_lang}")
             
-            # Add language mismatch warning
-            warning = f"⚠️ [Language mismatch detected. Response should be in {user_lang}]\n\n"
-            return warning + bot_response
-        
+            translated_response = translate_with_llm(bot_response, user_lang)
+            translated_lang = detect_language(translated_response)
+            
+            if translated_lang == user_lang:
+                logger.info(f"Response automatically translated from {bot_lang} to {user_lang}")
+                return translated_response
+            else:
+                logger.error(f"Translation failed: got {translated_lang} instead of {user_lang}")
+            
         return bot_response
+        
     except Exception as e:
-        logger.error(f"Error in post_process_response: {str(e)}")
+        logger.error(f"Post-processing error: {e}")
         return bot_response
 
 def load_vector_store():
@@ -228,40 +251,14 @@ def load_vector_store():
         logger.error(traceback.format_exc())
         return None
 
-def detect_language(text):
-    """Detect language with fallback and enhanced logging"""
+def detect_language(text: str) -> str:
+    """Detect language with fallback"""
     try:
-        # Strip text before checking length
-        cleaned_text = text.strip()
-        
-        # Minimum text length for reliable detection - reduced to 5 characters
-        if len(cleaned_text) < 5:
-            logger.debug(f"Text too short for reliable detection: '{cleaned_text}'")
-            try:
-                return detect(cleaned_text)
-            except:
-                return "en"
+        if len(text.strip()) < 5:
+            logger.debug(f"Text too short for reliable detection: '{text}'")
+            return "en"
             
-        lang = detect(cleaned_text)
-        
-        # Expand supported languages list
-        supported_langs = [
-            # European languages
-            "en", "ru", "uk", "de", "fr", "es", "it", "pt", "nl", "pl", "cs", "sk", "hu",
-            # Nordic/Baltic
-            "sv", "no", "da", "lt", "lv", "et", "fi",
-            # Asian languages
-            "zh", "ja", "ko", "th", "vi",
-            # Middle Eastern
-            "ar", "fa", "he", "tr"
-        ]
-        
-        # Log detection result
-        if lang not in supported_langs:
-            logger.warning(f"Detected uncommon language: {lang} for text: '{cleaned_text[:50]}...'")
-            
-        # Return detected language even if not in supported list
-        return lang
+        return detect(text.strip())
         
     except Exception as e:
         logger.error(f"Language detection error: {str(e)} for text: '{text[:50]}...'")
