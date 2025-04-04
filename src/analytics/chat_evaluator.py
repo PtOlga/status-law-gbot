@@ -6,18 +6,15 @@ import json
 import os
 import datetime
 from typing import List, Dict, Any, Tuple, Optional
-import pandas as pd
-from src.knowledge_base.dataset import DatasetManager
-from huggingface_hub import HfApi
 import io
 import logging
+from huggingface_hub import HfApi
 
 logger = logging.getLogger(__name__)
 
 from config.settings import (
     DATASET_ID,
-    DATASET_CHAT_HISTORY_PATH,
-    DATASET_ANNOTATIONS_PATH,
+    CHAT_HISTORY_PATH,
     HF_TOKEN
 )
 
@@ -34,9 +31,9 @@ class ChatEvaluator:
         self.dataset_id = dataset_id or DATASET_ID
         self.api = HfApi(token=self.hf_token)
         
-        # Use dataset paths
-        self.chat_history_path = DATASET_CHAT_HISTORY_PATH
-        self.annotations_path = DATASET_ANNOTATIONS_PATH
+        # Paths in dataset
+        self.chat_history_path = CHAT_HISTORY_PATH
+        self.annotations_path = "annotations"
         
         # Ensure directories exist in dataset
         try:
@@ -52,7 +49,7 @@ class ChatEvaluator:
             # Check and create chat history directory
             if self.chat_history_path not in files:
                 self.api.upload_file(
-                    path_or_fileobj=io.StringIO(""),
+                    path_or_fileobj=io.BytesIO(b""),
                     path_in_repo=f"{self.chat_history_path}/.gitkeep",
                     repo_id=self.dataset_id,
                     repo_type="dataset"
@@ -61,7 +58,7 @@ class ChatEvaluator:
             # Check and create annotations directory
             if self.annotations_path not in files:
                 self.api.upload_file(
-                    path_or_fileobj=io.StringIO(""),
+                    path_or_fileobj=io.BytesIO(b""),
                     path_in_repo=f"{self.annotations_path}/.gitkeep",
                     repo_id=self.dataset_id,
                     repo_type="dataset"
@@ -71,13 +68,34 @@ class ChatEvaluator:
             raise
 
     def get_chat_history(self) -> List[Dict[str, Any]]:
-        """
-        Get all chat history data from dataset
-        """
-        success, chat_data = self.dataset_manager.get_chat_history()
-        if not success or not chat_data:
+        """Get all chat history data from dataset"""
+        try:
+            chat_data = []
+            files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
+            
+            # Filter chat history files
+            chat_files = [f for f in files if f.startswith(f"{self.chat_history_path}/") 
+                         and f.endswith('.json')]
+            
+            for file in chat_files:
+                try:
+                    # Download and parse chat file
+                    content = self.api.hf_hub_download(
+                        repo_id=self.dataset_id,
+                        filename=file,
+                        repo_type="dataset"
+                    )
+                    with open(content, 'r', encoding='utf-8') as f:
+                        chat = json.load(f)
+                        chat_data.append(chat)
+                except Exception as e:
+                    logger.error(f"Error loading chat file {file}: {e}")
+                    continue
+            
+            return chat_data
+        except Exception as e:
+            logger.error(f"Error getting chat history: {e}")
             return []
-        return chat_data
     
     def get_qa_pairs_for_evaluation(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
@@ -346,6 +364,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 
