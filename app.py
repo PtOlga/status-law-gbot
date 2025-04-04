@@ -736,9 +736,8 @@ with gr.Blocks() as demo:
                         msg = gr.Textbox(
                             label="Your question",
                             placeholder="Enter your question...",
-                            scale=4,
-                            submit_on_enter=True  # Enable Enter key submission
-                        )
+                            scale=4
+                        ).style(container=False)  # Используем style вместо submit_on_enter
                         submit_btn = gr.Button("Send", variant="primary")
                         clear_btn = gr.Button("Clear")  # Add clear button
                 
