@@ -207,6 +207,12 @@ def post_process_response(user_message, bot_response):
         user_lang = detect_language(user_message)
         bot_lang = detect_language(bot_response)
         
+        # Check if user language is supported using LanguageUtils
+        if user_lang not in LanguageUtils.SUPPORTED_LANGUAGES:
+            apology = ("I apologize, but I cannot respond in your language. "
+                      "I will answer in English instead.\n\n")
+            return apology + bot_response
+            
         if user_lang != bot_lang and len(bot_response.strip()) > 20:
             logger.warning(f"Language mismatch detected! User: {user_lang}, Bot: {bot_lang}")
             
@@ -218,6 +224,10 @@ def post_process_response(user_message, bot_response):
                 return translated_response
             else:
                 logger.error(f"Translation failed: got {translated_lang} instead of {user_lang}")
+                # If translation fails, return English response with apology
+                apology = ("I apologize, but I cannot translate my response to your language. "
+                          "Here is my answer in English:\n\n")
+                return apology + bot_response
             
         return bot_response
         
