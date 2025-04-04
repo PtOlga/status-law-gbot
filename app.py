@@ -35,6 +35,7 @@ from web.evaluation_interface import (
     generate_evaluation_report_html,
     export_training_data_action
 )
+from src.language_utils import LanguageUtils
 
 # Setup logging
 logging.basicConfig(
