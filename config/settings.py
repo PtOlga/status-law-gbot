@@ -254,7 +254,7 @@ RATING_FIELDS = {
 CHAT_HISTORY_SCHEMA = {
     "conversation_id": str,
     "timestamp": str,  # ISO format
-    "messages": [
+    "history": [
         {
             "role": str,  # "user" or "assistant"
             "content": str,

@@ -96,7 +96,7 @@ class ChatEvaluator:
                     )
                     with open(content, 'r', encoding='utf-8') as f:
                         chat_data = json.load(f)
-                        if isinstance(chat_data, dict) and 'messages' in chat_data:
+                        if isinstance(chat_data, dict) and 'history' in chat_data:
                             histories.append(chat_data)
                         else:
                             logger.warning(f"Invalid chat history format in {file}")
@@ -118,7 +118,7 @@ class ChatEvaluator:
         qa_pairs = []
         
         for history in histories:
-            messages = history.get('messages', [])
+            messages = history.get('history', [])
             current_question = None
             
             for msg in messages:
@@ -154,7 +154,7 @@ class ChatEvaluator:
         for chat in chat_data:
             conversation_id = chat.get("conversation_id", "unknown")
             timestamp = chat.get("timestamp", "")
-            messages = chat.get("messages", [])
+            messages = chat.get("history", [])
             
             # Find user-assistant pairs in messages
             for i in range(len(messages) - 1):
