@@ -1,44 +1,59 @@
-import gradio as gr
-import os
+# Standard library imports
+import datetime
 import io
 import json
-import datetime
-from pathlib import Path
-from src.analytics.chat_evaluator import ChatEvaluator
-import sys
 import logging
+import os
+#import sys
+#from pathlib import Path
+
+# Third-party imports
+import gradio as gr
+from huggingface_hub import HfApi, InferenceClient
 from langdetect import detect
-from huggingface_hub import InferenceClient, HfApi
+from dotenv import load_dotenv
+import requests
+from datasets import load_dataset
+
+# Load environment variables
+load_dotenv()
+
+# Local imports - config
 from config.constants import DEFAULT_SYSTEM_MESSAGE
 from config.settings import (
-    HF_TOKEN, 
-    MODELS,
-    ACTIVE_MODEL,
-    EMBEDDING_MODEL,
-    DATASET_ID,
-    DATASET_CHAT_HISTORY_PATH,
-    DATASET_VECTOR_STORE_PATH,
-    DATASET_PREFERENCES_PATH,
-    DEFAULT_MODEL,
     API_CONFIG,
-    DATASET_ERROR_LOGS_PATH  # добавляем импорт
+    ACTIVE_MODEL,
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_ERROR_LOGS_PATH,
+    DATASET_ID,
+    DATASET_PREFERENCES_PATH,
+    DATASET_VECTOR_STORE_PATH,
+    DEFAULT_MODEL,
+    EMBEDDING_MODEL,
+    HF_TOKEN,
+    MODELS
 )
+
+# Local imports - source modules
+from src.analytics.chat_evaluator import ChatEvaluator
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
-from web.training_interface import (
-    get_models_df,
-    generate_chat_analysis,
-    register_model_action,
-    start_finetune_action
-)
+from src.language_utils import LanguageUtils
+
+# Local imports - web interfaces
 from web.evaluation_interface import (
+    export_training_data_action,
+    generate_evaluation_report_html,
     get_evaluation_status,
     get_qa_pairs_dataframe,
     load_qa_pair_for_evaluation,
-    save_evaluation,
-    generate_evaluation_report_html,
-    export_training_data_action
+    save_evaluation
 )
-from src.language_utils import LanguageUtils
+from web.training_interface import (
+    generate_chat_analysis,
+    get_models_df,
+    register_model_action,
+    start_finetune_action
+)
 
 # Setup logging
 logging.basicConfig(
