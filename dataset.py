@@ -1,31 +1,36 @@
 from huggingface_hub import HfApi
-api = HfApi()
+from config.settings import (
+    DATASET_ID,
+    DATASET_VECTOR_STORE_PATH,
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_FINE_TUNED_PATH,
+    DATASET_ANNOTATIONS_PATH,
+    HF_TOKEN
+)
 
-# Имя существующего датасета
-dataset_name = "Rulga/status-law-knowledge-base"
+api = HfApi(token=HF_TOKEN)
+dataset_name = DATASET_ID
 
-# Создаем структуру с пустыми файлами
+# Initialize dataset structure
+directories = [
+    DATASET_VECTOR_STORE_PATH,
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_FINE_TUNED_PATH,
+    DATASET_ANNOTATIONS_PATH
+]
+
 try:
-    # Создаем .gitkeep в vector_store
-    api.upload_file(
-        path_or_fileobj=b"",  # пустой файл
-        path_in_repo="vector_store/.gitkeep",
-        repo_id=dataset_name,
-        repo_type="dataset"
-    )
-    print("✓ Создана папка vector_store")
+    for directory in directories:
+        api.upload_file(
+            path_or_fileobj=b"",
+            path_in_repo=f"{directory}/.gitkeep",
+            repo_id=dataset_name,
+            repo_type="dataset"
+        )
+        print(f"✓ Created directory: {directory}")
 
-    # Создаем .gitkeep в chat_history
-    api.upload_file(
-        path_or_fileobj=b"",
-        path_in_repo="chat_history/.gitkeep",
-        repo_id=dataset_name,
-        repo_type="dataset"
-    )
-    print("✓ Создана папка chat_history")
-
-    print("\nСтруктура датасета успешно создана!")
+    print("\nDataset structure successfully initialized!")
 
 except Exception as e:
-    print(f"Произошла ошибка: {str(e)}")
+    print(f"Error occurred: {str(e)}")
 

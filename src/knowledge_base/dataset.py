@@ -9,26 +9,34 @@ from typing import Tuple, List, Dict, Any, Optional, Union
 from datetime import datetime
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
-from config.settings import VECTOR_STORE_PATH, HF_TOKEN, EMBEDDING_MODEL, DATASET_ID, CHAT_HISTORY_PATH
-from langchain_huggingface import HuggingFaceEmbeddings  # новый импорт
+from config.settings import (
+    VECTOR_STORE_PATH,
+    HF_TOKEN,
+    EMBEDDING_MODEL,
+    DATASET_ID,
+    CHAT_HISTORY_PATH,
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_VECTOR_STORE_PATH,
+    DATASET_FINE_TUNED_PATH,
+    DATASET_ANNOTATIONS_PATH
+)
+from langchain_huggingface import HuggingFaceEmbeddings
 import logging
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class DatasetManager:
     def __init__(self, dataset_name: Optional[str] = None, token: Optional[str] = None):
-        """
-        Initialize dataset manager
-        
-        Args:
-            dataset_name: Hugging Face Hub dataset name
-            token: Hugging Face access token
-        """
         self.dataset_name = dataset_name or DATASET_ID
         self.token = token if token else HF_TOKEN
         self.api = HfApi(token=self.token)
+        
+        # Use paths from settings
+        self.vector_store_path = DATASET_VECTOR_STORE_PATH
+        self.chat_history_path = DATASET_CHAT_HISTORY_PATH
+        self.fine_tuned_path = DATASET_FINE_TUNED_PATH
+        self.annotations_path = DATASET_ANNOTATIONS_PATH
 
     def init_dataset_structure(self) -> Tuple[bool, str]:
         """
