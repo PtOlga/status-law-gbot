@@ -69,7 +69,7 @@ class ChatEvaluator:
             logger.error(f"Error ensuring dataset structure: {e}")
             raise
 
-    def get_chat_histories(self) -> List[Dict[str, Any]]:
+    def get_chat_history(self) -> List[Dict[str, Any]]:
         """
         Get all chat histories from the dataset
         """

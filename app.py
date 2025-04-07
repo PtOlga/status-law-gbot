@@ -17,6 +17,7 @@ from config.settings import (
     DATASET_ID,
     DATASET_CHAT_HISTORY_PATH,
     DATASET_VECTOR_STORE_PATH,
+    DATASET_PREFERENCES_PATH,
     DEFAULT_MODEL,
     API_CONFIG,
     DATASET_ERROR_LOGS_PATH  # добавляем импорт
@@ -62,8 +63,8 @@ logger.info(f"Chat histories will be saved to: {DATASET_CHAT_HISTORY_PATH}")
 def load_user_preferences():
     """Load user preferences from file"""
     try:
-        if os.path.exists(USER_PREFERENCES_PATH):
-            with open(USER_PREFERENCES_PATH, 'r') as f:
+        if os.path.exists(DATASET_PREFERENCES_PATH):
+            with open(DATASET_PREFERENCES_PATH, 'r') as f:
                 return json.load(f)
         return {
             "selected_model": DEFAULT_MODEL,
