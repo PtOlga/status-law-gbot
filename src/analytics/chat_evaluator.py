@@ -69,15 +69,16 @@ class ChatEvaluator:
             logger.error(f"Error ensuring dataset structure: {e}")
             raise
 
+   
     def get_chat_history(self) -> List[Dict[str, Any]]:
         """
         Get all chat histories from the dataset
         """
         try:
             # Get list of all files in chat history directory
-            files = self.api.list_repo_files(self.dataset_id)
+            files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")  
             logger.info(f"All files in dataset:\n" + "\n".join(f"  - {f}" for f in files))
-            
+        
             # Filter for chat history files
             chat_path = f"{self.chat_history_path}/"
             chat_files = [f for f in files if f.startswith(chat_path) and f.endswith('.json')]
