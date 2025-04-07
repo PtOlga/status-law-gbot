@@ -1,4 +1,5 @@
 import os
+import tempfile
 
 # API tokens
 HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
@@ -26,18 +27,20 @@ DATASET_CHAT_HISTORY_PATH = "chat_history"
 DATASET_VECTOR_STORE_PATH = "vector_store"
 DATASET_FINE_TUNED_PATH = "fine_tuned_models"
 DATASET_ANNOTATIONS_PATH = "annotations"
-DATASET_ERROR_LOGS_PATH = "error_logs"  
+DATASET_ERROR_LOGS_PATH = "error_logs"
+DATASET_PREFERENCES_PATH = "preferences/user_preferences.json"
 
-# Local paths (temporary storage)
-CHAT_HISTORY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history")
-VECTOR_STORE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "vector_store")
-FINE_TUNED_PATH = os.path.join(CHAT_HISTORY_PATH, "fine_tuned_models")
-MODELS_REGISTRY_PATH = os.path.join(CHAT_HISTORY_PATH, "models_registry.json")
+# Temporary storage (using system temp directory)
+TEMP_DIR = tempfile.gettempdir()
+TEMP_ROOT = os.path.join(TEMP_DIR, "status_law_kb")
+CHAT_HISTORY_PATH = os.path.join(TEMP_ROOT, "chat_history")
+VECTOR_STORE_PATH = os.path.join(TEMP_ROOT, "vector_store")
+FINE_TUNED_PATH = os.path.join(TEMP_ROOT, "fine_tuned_models")
+MODELS_REGISTRY_PATH = os.path.join(TEMP_ROOT, "models_registry.json")
 
-# Create necessary directories if they don't exist
-os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
-os.makedirs(VECTOR_STORE_PATH, exist_ok=True)
-os.makedirs(FINE_TUNED_PATH, exist_ok=True)
+# Create temporary directories
+for path in [CHAT_HISTORY_PATH, VECTOR_STORE_PATH, FINE_TUNED_PATH]:
+    os.makedirs(path, exist_ok=True)
 
 # Paths configuration
 MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "models")
