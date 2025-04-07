@@ -73,9 +73,16 @@ class ChatEvaluator:
             chat_data = []
             files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
             
+            # Debug print
+            logger.info(f"Total files in dataset: {len(files)}")
+            
             # Filter chat history files
             chat_files = [f for f in files if f.startswith(f"{self.chat_history_path}/") 
                          and f.endswith('.json')]
+            
+            # Debug print
+            logger.info(f"Found chat files: {len(chat_files)}")
+            logger.info(f"Chat files: {chat_files}")
             
             for file in chat_files:
                 try:
@@ -88,9 +95,14 @@ class ChatEvaluator:
                     with open(content, 'r', encoding='utf-8') as f:
                         chat = json.load(f)
                         chat_data.append(chat)
+                        # Debug print
+                        logger.info(f"Loaded chat file {file} with {len(chat.get('messages', []))} messages")
                 except Exception as e:
                     logger.error(f"Error loading chat file {file}: {e}")
                     continue
+            
+            # Debug print
+            logger.info(f"Total loaded chats: {len(chat_data)}")
             
             return chat_data
         except Exception as e:
@@ -364,6 +376,8 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
+
 
 
 
