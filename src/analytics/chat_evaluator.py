@@ -14,8 +14,10 @@ logger = logging.getLogger(__name__)
 
 from config.settings import (
     DATASET_ID,
+    HF_TOKEN,
     CHAT_HISTORY_PATH,
-    HF_TOKEN
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_ANNOTATIONS_PATH
 )
 
 class ChatEvaluator:
@@ -31,9 +33,9 @@ class ChatEvaluator:
         self.dataset_id = dataset_id or DATASET_ID
         self.api = HfApi(token=self.hf_token)
         
-        # Paths in dataset
-        self.chat_history_path = CHAT_HISTORY_PATH
-        self.annotations_path = "annotations"
+        # Используем пути из settings
+        self.chat_history_path = DATASET_CHAT_HISTORY_PATH
+        self.annotations_path = DATASET_ANNOTATIONS_PATH
         
         # Ensure directories exist in dataset
         try:
@@ -360,6 +362,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 

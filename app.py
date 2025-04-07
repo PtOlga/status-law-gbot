@@ -15,8 +15,8 @@ from config.settings import (
     ACTIVE_MODEL,
     EMBEDDING_MODEL,
     DATASET_ID,
-    CHAT_HISTORY_PATH,
-    VECTOR_STORE_PATH,
+    DATASET_CHAT_HISTORY_PATH,  # меняем импорт
+    DATASET_VECTOR_STORE_PATH,  # меняем импорт
     DEFAULT_MODEL,
     API_CONFIG 
 )
@@ -47,10 +47,6 @@ logger = logging.getLogger(__name__)
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
-# Path for user preferences file
-USER_PREFERENCES_PATH = os.path.join(os.path.dirname(__file__), "user_preferences.json")
-ERROR_LOGS_PATH = os.path.join(os.path.dirname(__file__), "error_logs")
-
 # Global variables
 client = None
 context_store = {}
@@ -60,7 +56,7 @@ chat_evaluator = ChatEvaluator(
     dataset_id=DATASET_ID
 )
 
-logger.info(f"Chat histories will be saved to: {CHAT_HISTORY_PATH}")
+logger.info(f"Chat histories will be saved to: {DATASET_CHAT_HISTORY_PATH}")
 
 def load_user_preferences():
     """Load user preferences from file"""
@@ -80,22 +76,28 @@ def load_user_preferences():
         }
 
 def save_user_preferences(model_key, parameters=None):
-    """Save user preferences to file"""
+    """Save user preferences to dataset"""
     try:
         preferences = load_user_preferences()
         preferences["selected_model"] = model_key
         
-        # Update parameters if provided
         if parameters:
             if model_key not in preferences["parameters"]:
                 preferences["parameters"][model_key] = {}
             
             preferences["parameters"][model_key] = parameters
         
-        with open(USER_PREFERENCES_PATH, 'w') as f:
-            json.dump(preferences, f, indent=2)
+        # Сохраняем в датасет вместо локального файла
+        json_content = json.dumps(preferences, indent=2)
+        api = HfApi(token=HF_TOKEN)
+        api.upload_file(
+            path_or_fileobj=io.StringIO(json_content),
+            path_in_repo="preferences/user_preferences.json",
+            repo_id=DATASET_ID,
+            repo_type="dataset"
+        )
         
-        logger.info("User preferences saved successfully!")
+        logger.info("User preferences saved successfully to dataset!")
         return True
     except Exception as e:
         logger.error(f"Error saving user preferences: {str(e)}")
@@ -449,7 +451,7 @@ def format_friendly_error(api_error):
         return f"⚠️ Error processing request. Technical details: {api_error[:200]}"    
     
 def log_api_error(user_message, error_message, model_id, is_fallback=False):
-    """Log API errors to a separate file for monitoring"""
+    """Log API errors to dataset"""
     try:
         os.makedirs(ERROR_LOGS_PATH, exist_ok=True)
         
