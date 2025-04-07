@@ -243,30 +243,32 @@ EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
 USER_AGENT = "Status-Law-Assistant/1.0"
 
 # Add these constants to settings.py
+RATING_FIELDS = {
+    "accuracy": "Точность ответа",
+    "completeness": "Полнота информации",
+    "relevance": "Релевантность ответу",
+    "clarity": "Ясность изложения",
+    "legal_correctness": "Юридическая корректность"
+}
+
 CHAT_HISTORY_SCHEMA = {
-    "conversation_id": str,  # UUID format
-    "timestamp": str,        # ISO format
-    "messages": [            # Using 'messages' consistently instead of 'history'
+    "conversation_id": str,
+    "timestamp": str,  # ISO format
+    "messages": [
         {
-            "role": str,     # "user" or "assistant"
-            "content": str,  
+            "role": str,  # "user" or "assistant"
+            "content": str,
             "timestamp": str  # ISO format
         }
     ]
 }
 
 ANNOTATION_SCHEMA = {
-    "conversation_id": str,  # UUID format
-    "timestamp": str,        # ISO format
+    "conversation_id": str,
+    "timestamp": str,
     "question": str,
     "original_answer": str,
     "improved_answer": str,
-    "ratings": {
-        "accuracy": int,         # 1-5
-        "completeness": int,     # 1-5
-        "relevance": int,        # 1-5
-        "clarity": int,          # 1-5
-        "legal_correctness": int # 1-5
-    },
+    "ratings": {field: int for field in RATING_FIELDS},  # все оценки 1-5
     "notes": str
 }

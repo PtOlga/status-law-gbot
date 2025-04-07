@@ -237,18 +237,15 @@ class DatasetManager:
 
     def save_chat_history(self, conversation_id: str, messages: List[Dict[str, str]]) -> Tuple[bool, str]:
         try:
-            # Create filename with timestamp
             timestamp = datetime.now().isoformat()
             filename = f"{self.chat_history_path}/{conversation_id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
             
-            # Standardize the structure
             chat_data = {
                 "conversation_id": conversation_id,
                 "timestamp": timestamp,
-                "messages": messages  # Using 'messages' consistently
+                "history": messages  # Changed from 'messages' to 'history'
             }
             
-            # Validate structure matches schema
             if not self._validate_chat_structure(chat_data):
                 return False, "Invalid chat history structure"
             
@@ -259,6 +256,20 @@ class DatasetManager:
             return True, "Chat history saved successfully"
         except Exception as e:
             return False, f"Error saving chat history: {str(e)}"
+
+    def _validate_chat_structure(self, chat_data: Dict) -> bool:
+        required_fields = {"conversation_id", "timestamp", "history"}
+        if not all(field in chat_data for field in required_fields):
+            return False
+        
+        if not isinstance(chat_data["history"], list):
+            return False
+        
+        for message in chat_data["history"]:
+            if not all(field in message for field in ["role", "content", "timestamp"]):
+                return False
+            
+        return True
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
         try:
