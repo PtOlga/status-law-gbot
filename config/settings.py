@@ -26,7 +26,7 @@ DATASET_CHAT_HISTORY_PATH = "chat_history"
 DATASET_VECTOR_STORE_PATH = "vector_store"
 DATASET_FINE_TUNED_PATH = "fine_tuned_models"
 DATASET_ANNOTATIONS_PATH = "annotations"
-DATASET_ERROR_LOGS_PATH = "error_logs"  # добавляем путь для логов
+DATASET_ERROR_LOGS_PATH = "error_logs"  
 
 # Local paths (temporary storage)
 CHAT_HISTORY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "chat_history")

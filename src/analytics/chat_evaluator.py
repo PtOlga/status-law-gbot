@@ -69,32 +69,72 @@ class ChatEvaluator:
             logger.error(f"Error ensuring dataset structure: {e}")
             raise
 
-    def get_chat_history(self) -> List[Dict[str, Any]]:
-        """Get all chat history data from dataset"""
+    def get_chat_histories(self) -> List[Dict[str, Any]]:
+        """
+        Get all chat histories from the dataset
+        """
         try:
-            chat_data = []
-            files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
+            # Get list of all files in chat history directory
+            files = self.api.list_repo_files(self.dataset_id)
+            logger.info(f"All files in dataset:\n" + "\n".join(f"  - {f}" for f in files))
             
-            # Debug print all files
-            logger.info(f"All files in dataset:")
-            for f in files:
-                logger.info(f"  - {f}")
-            
-            logger.info(f"Looking for files that start with: {self.chat_history_path}/")
-            
-            # Filter chat history files
-            chat_files = [f for f in files if f.startswith(f"{self.chat_history_path}/") 
-                         and f.endswith('.json')]
-            
-            # Debug print
+            # Filter for chat history files
+            chat_path = f"{self.chat_history_path}/"
+            chat_files = [f for f in files if f.startswith(chat_path) and f.endswith('.json')]
             logger.info(f"Found chat files: {len(chat_files)}")
             logger.info(f"Chat files: {chat_files}")
-            
-            return chat_data
+
+            histories = []
+            for file in chat_files:
+                try:
+                    # Download and parse each chat file
+                    content = self.api.hf_hub_download(
+                        repo_id=self.dataset_id,
+                        filename=file,
+                        repo_type="dataset"
+                    )
+                    with open(content, 'r', encoding='utf-8') as f:
+                        chat_data = json.load(f)
+                        if isinstance(chat_data, dict) and 'messages' in chat_data:
+                            histories.append(chat_data)
+                        else:
+                            logger.warning(f"Invalid chat history format in {file}")
+                except Exception as e:
+                    logger.error(f"Error processing chat file {file}: {e}")
+                    continue
+
+            logger.debug(f"Processing {len(histories)} chat histories")
+            return histories
+
         except Exception as e:
-            logger.error(f"Error getting chat history: {e}")
+            logger.error(f"Failed to get chat histories: {e}")
             return []
-    
+
+    def extract_qa_pairs(self, histories: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Extract question-answer pairs from chat histories
+        """
+        qa_pairs = []
+        
+        for history in histories:
+            messages = history.get('messages', [])
+            current_question = None
+            
+            for msg in messages:
+                if msg.get('role') == 'user':
+                    current_question = msg.get('content')
+                elif msg.get('role') == 'assistant' and current_question:
+                    qa_pairs.append({
+                        'conversation_id': history.get('conversation_id'),
+                        'question': current_question,
+                        'answer': msg.get('content'),
+                        'timestamp': history.get('timestamp')
+                    })
+                    current_question = None
+
+        logger.debug(f"Extracted {len(qa_pairs)} QA pairs")
+        return qa_pairs
+
     def get_qa_pairs_for_evaluation(self, limit: int = 50) -> List[Dict[str, Any]]:
         """
         Extract question-answer pairs for evaluation
@@ -362,6 +402,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 
