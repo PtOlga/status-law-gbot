@@ -15,10 +15,11 @@ from config.settings import (
     ACTIVE_MODEL,
     EMBEDDING_MODEL,
     DATASET_ID,
-    DATASET_CHAT_HISTORY_PATH,  # меняем импорт
-    DATASET_VECTOR_STORE_PATH,  # меняем импорт
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_VECTOR_STORE_PATH,
     DEFAULT_MODEL,
-    API_CONFIG 
+    API_CONFIG,
+    DATASET_ERROR_LOGS_PATH  # добавляем импорт
 )
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 from web.training_interface import (
@@ -1177,10 +1178,7 @@ with gr.Blocks() as demo:
 
 # Launch application
 if __name__ == "__main__":
-    # Create error logs directory
-    os.makedirs(ERROR_LOGS_PATH, exist_ok=True)
-    
-    # Check knowledge base availability in dataset
+    # Проверяем knowledge base
     if not load_vector_store():
         logger.warning("Knowledge base not found. Please create it through the interface.")
     
