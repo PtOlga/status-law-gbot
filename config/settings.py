@@ -11,7 +11,7 @@ API_CONFIG = {
     "inference_endpoint": os.getenv("HF_INFERENCE_ENDPOINT", "https://api-inference.huggingface.co"),
     "token": HF_TOKEN,
     "is_paid_tier": True,
-    "timeout": 30,
+    "timeout": 15,
     "headers": {
         "X-Use-Cache": "false",
         "Content-Type": "application/json",
@@ -241,3 +241,32 @@ EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
 
 # Request settings
 USER_AGENT = "Status-Law-Assistant/1.0"
+
+# Add these constants to settings.py
+CHAT_HISTORY_SCHEMA = {
+    "conversation_id": str,  # UUID format
+    "timestamp": str,        # ISO format
+    "messages": [            # Using 'messages' consistently instead of 'history'
+        {
+            "role": str,     # "user" or "assistant"
+            "content": str,  
+            "timestamp": str  # ISO format
+        }
+    ]
+}
+
+ANNOTATION_SCHEMA = {
+    "conversation_id": str,  # UUID format
+    "timestamp": str,        # ISO format
+    "question": str,
+    "original_answer": str,
+    "improved_answer": str,
+    "ratings": {
+        "accuracy": int,         # 1-5
+        "completeness": int,     # 1-5
+        "relevance": int,        # 1-5
+        "clarity": int,          # 1-5
+        "legal_correctness": int # 1-5
+    },
+    "notes": str
+}

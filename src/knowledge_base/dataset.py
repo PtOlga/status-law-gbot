@@ -239,42 +239,26 @@ class DatasetManager:
         try:
             # Create filename with timestamp
             timestamp = datetime.now().isoformat()
-            filename = f"chat_history/{conversation_id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+            filename = f"{self.chat_history_path}/{conversation_id}_{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
             
-            # Prepare data for saving with consistent structure
+            # Standardize the structure
             chat_data = {
                 "conversation_id": conversation_id,
                 "timestamp": timestamp,
-                "messages": messages  # Using 'messages' consistently instead of 'history'
+                "messages": messages  # Using 'messages' consistently
             }
             
-            # Use temporary file for safe writing
+            # Validate structure matches schema
+            if not self._validate_chat_structure(chat_data):
+                return False, "Invalid chat history structure"
+            
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".json", delete=False, encoding="utf-8") as temp:
                 json.dump(chat_data, temp, ensure_ascii=False, indent=2)
                 temp.flush()
-                temp_name = temp.name
-
-            try:
-                # Upload to Hugging Face Hub with explicit error handling
-                self.api.upload_file(
-                    path_or_fileobj=temp_name,
-                    path_in_repo=filename,
-                    repo_id=self.dataset_name,
-                    repo_type="dataset"
-                )
-            except Exception as upload_error:
-                return False, f"Failed to upload chat history: {str(upload_error)}"
-            finally:
-                # Clean up temporary file
-                if os.path.exists(temp_name):
-                    os.unlink(temp_name)
             
-            logger.info(f"Successfully saved chat history: {filename}")
-            return True, f"Chat history saved successfully as {filename}"
-        
+            return True, "Chat history saved successfully"
         except Exception as e:
-            logger.error(f"Error in save_chat_history: {str(e)}")
-            return False, f"Failed to save chat history: {str(e)}"
+            return False, f"Error saving chat history: {str(e)}"
 
     def get_chat_history(self, conversation_id: Optional[str] = None) -> Tuple[bool, Any]:
         try:
