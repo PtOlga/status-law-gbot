@@ -77,8 +77,7 @@ class ChatEvaluator:
         try:
             # Get list of all files in chat history directory
             files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")  
-            logger.info(f"All files in dataset:\n" + "\n".join(f"  - {f}" for f in files))
-        
+            
             # Filter for chat history files
             chat_path = f"{self.chat_history_path}/"
             chat_files = [f for f in files if f.startswith(chat_path) and f.endswith('.json')]
@@ -104,7 +103,6 @@ class ChatEvaluator:
                     logger.error(f"Error processing chat file {file}: {e}")
                     continue
 
-            logger.debug(f"Processing {len(histories)} chat histories")
             return histories
 
         except Exception as e:
@@ -408,6 +406,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 
