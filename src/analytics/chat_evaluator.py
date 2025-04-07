@@ -8,7 +8,7 @@ import datetime
 from typing import List, Dict, Any, Tuple, Optional
 import io
 import logging
-from huggingface_hub import HfApi
+#from huggingface_hub import HfApi
 
 logger = logging.getLogger(__name__)
 
@@ -296,18 +296,23 @@ class ChatEvaluator:
         Returns:
             Annotation object or None if not found
         """
-        if not self.annotations_dir:
+        try:
+            # Используем DATASET_ANNOTATIONS_PATH для формирования пути
+            filename = f"{DATASET_ANNOTATIONS_PATH}/annotation_{conversation_id}.json"
+            
+            # Download and parse annotation file
+            content = self.api.hf_hub_download(
+                repo_id=self.dataset_id,
+                filename=filename,
+                repo_type="dataset"
+            )
+            
+            with open(content, 'r', encoding='utf-8') as f:
+                return json.load(f)
+            
+        except Exception as e:
+            logger.error(f"Error loading annotation for {conversation_id}: {e}")
             return None
-        
-        filepath = os.path.join(self.annotations_dir, f"annotation_{conversation_id}.json")
-        if os.path.exists(filepath):
-            try:
-                with open(filepath, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception as e:
-                print(f"Error loading annotation for {conversation_id}: {str(e)}")
-        
-        return None
     
     def export_training_data(self, output_file: str, min_rating: int = 4) -> Tuple[bool, str]:
         """
@@ -403,6 +408,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 
