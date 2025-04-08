@@ -239,17 +239,6 @@ class ChatEvaluator:
                        notes: str = "") -> Tuple[bool, str]:
         """
         Save evaluation annotation
-        
-        Args:
-            conversation_id: ID of the conversation
-            question: User question
-            original_answer: Original bot answer
-            improved_answer: Improved answer (gold standard)
-            ratings: Dictionary with ratings for different criteria
-            notes: Optional evaluator notes
-            
-        Returns:
-            (success, message)
         """
         try:
             # Create annotation object
@@ -266,12 +255,12 @@ class ChatEvaluator:
             # Create filename with conversation_id
             filename = f"{self.annotations_path}/annotation_{conversation_id}.json"
             
-            # Convert to JSON string
-            json_content = json.dumps(annotation, ensure_ascii=False, indent=2)
+            # Convert to JSON bytes
+            json_content = json.dumps(annotation, ensure_ascii=False, indent=2).encode('utf-8')
             
-            # Upload to dataset
+            # Upload to dataset using bytes buffer
             self.api.upload_file(
-                path_or_fileobj=io.StringIO(json_content),
+                path_or_fileobj=io.BytesIO(json_content),
                 path_in_repo=filename,
                 repo_id=self.dataset_id,
                 repo_type="dataset"
@@ -329,39 +318,34 @@ class ChatEvaluator:
             logger.error(f"Error getting annotations: {e}")
             return []
     
-    def get_annotation_by_conversation_id(self, conversation_id: str, force_reload=False) -> Optional[Dict[str, Any]]:
+    def get_annotation(self, conversation_id: str) -> Optional[Dict[str, Any]]:
         """
-        Get annotation for a specific conversation
-        
-        Args:
-            conversation_id: Conversation ID to look for
-            force_reload: If True, force reload from dataset
-            
-        Returns:
-            Annotation object or None if not found
+        Get specific annotation by conversation ID
         """
-        # If we have cached annotations and not forcing reload, look there first
-        if self._annotations is not None and not force_reload:
-            for annotation in self._annotations:
-                if annotation.get("conversation_id") == conversation_id:
-                    return annotation
-        
         try:
-            # Try direct file access
+            # First check if annotations are loaded
+            if self._annotations is not None:
+                for annotation in self._annotations:
+                    if annotation.get("conversation_id") == conversation_id:
+                        return annotation
+            
+            # If not found in cache, try direct file access
             filename = f"{self.annotations_path}/annotation_{conversation_id}.json"
-            
-            # Download and parse annotation file
-            content = self.api.hf_hub_download(
-                repo_id=self.dataset_id,
-                filename=filename,
-                repo_type="dataset"
-            )
-            
-            with open(content, 'r', encoding='utf-8') as f:
-                return json.load(f)
-            
+            try:
+                content = self.api.hf_hub_download(
+                    repo_id=self.dataset_id,
+                    filename=filename,
+                    repo_type="dataset"
+                )
+                
+                with open(content, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception as e:
+                logger.error(f"Error loading annotation for {conversation_id}: {e}")
+                return None
+                
         except Exception as e:
-            logger.error(f"Error loading annotation for {conversation_id}: {e}")
+            logger.error(f"Error getting annotation: {e}")
             return None
     
     def export_training_data(self, output_file: str, min_rating: int = 4) -> Tuple[bool, str]:
