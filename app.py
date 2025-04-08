@@ -560,6 +560,11 @@ def save_chat_history(history, conversation_id):
 def respond_and_clear(message, history, conversation_id, system_prompt):
     """Wrapper function with proper output handling"""
     try:
+        # Generate a conversation ID if none exists
+        if not conversation_id:
+            conversation_id = f"conv_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}_{os.urandom(4).hex()}"
+            logger.info(f"Generated new conversation ID: {conversation_id}")
+        
         # Get current model parameters
         params = ACTIVE_MODEL['parameters']
         
@@ -580,9 +585,9 @@ def respond_and_clear(message, history, conversation_id, system_prompt):
         new_history, new_conv_id = result
         
         # Save chat history
-        save_chat_history(new_history, new_conv_id)
+        save_chat_history(new_history, conversation_id)  # Use our guaranteed non-null ID
         
-        return new_history, new_conv_id, ""  # Clear input
+        return new_history, conversation_id, ""  # Return our guaranteed non-null ID
         
     except Exception as e:
         logger.error(f"Error in respond_and_clear: {str(e)}")
