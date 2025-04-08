@@ -109,11 +109,11 @@ def save_user_preferences(model_key, parameters=None):
             
             preferences["parameters"][model_key] = parameters
         
-        # Сохраняем в датасет вместо локального файла
+        # Сохраняем в датасет, используя bytes
         json_content = json.dumps(preferences, indent=2)
         api = HfApi(token=HF_TOKEN)
         api.upload_file(
-            path_or_fileobj=io.StringIO(json_content),
+            path_or_fileobj=json_content.encode('utf-8'),  # Конвертируем строку в bytes
             path_in_repo="preferences/user_preferences.json",
             repo_id=DATASET_ID,
             repo_type="dataset"
