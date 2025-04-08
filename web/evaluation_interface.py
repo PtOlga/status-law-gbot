@@ -9,78 +9,92 @@ import json
 import os
 from typing import Dict, Any, List, Tuple
 
-def get_evaluation_status(evaluator: ChatEvaluator) -> str:
+def get_evaluation_status(evaluator, force_reload=False):
     """
-    Format evaluation status for display
+    Get evaluation status as formatted string and refresh QA data
     
     Args:
         evaluator: ChatEvaluator instance
+        force_reload: If True, force reload data from dataset
         
     Returns:
-        Formatted markdown string with status information
+        Status message, updated QA table and refresh message
     """
-    status = evaluator.get_evaluation_status()
-    
-    status_md = f"""
-    ## Evaluation Status
-    
-    - **Total QA Pairs:** {status['total_qa_pairs']}
-    - **Evaluated Pairs:** {status['evaluated_pairs']} ({status['evaluated_pairs']/max(1, status['total_qa_pairs'])*100:.1f}%)
-    - **Unevaluated Pairs:** {status['unevaluated_pairs']}
-    - **Evaluated Conversations:** {status['evaluated_conversations']}
-    """
-    
-    return status_md
+    try:
+        # First, reset cache if forcing reload
+        if force_reload:
+            evaluator.reset_cache()
+            
+        # Get status data
+        status = evaluator.get_evaluation_status(force_reload=force_reload)
+        
+        # Get updated QA table
+        qa_table = get_qa_pairs_dataframe(evaluator, show_evaluated=False, force_reload=force_reload)
+        
+        status_message = f"""
+        Total QA Pairs: {status['total_qa_pairs']}
+        Evaluated Pairs: {status['evaluated_pairs']}
+        Unevaluated Pairs: {status['unevaluated_pairs']}
+        Evaluated Conversations: {status['evaluated_conversations']}
+        """
+        
+        refresh_message = "Data refreshed successfully" if force_reload else ""
+        
+        return status_message, qa_table, refresh_message
+    except Exception as e:
+        logger.error(f"Error getting evaluation status: {e}")
+        
+        # Import pandas here to avoid circular imports
+        import pandas as pd
+        empty_df = pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"])
+        
+        return f"Error getting status: {str(e)}", empty_df, f"Error: {str(e)}"
 
-def get_qa_pairs_dataframe(evaluator: ChatEvaluator, show_evaluated: bool = False, limit: int = 50) -> pd.DataFrame:
+def get_qa_pairs_dataframe(evaluator, show_evaluated=False, force_reload=False):
     """
-    Get QA pairs as a pandas DataFrame for display
+    Get QA pairs as DataFrame for the evaluation interface
     
     Args:
         evaluator: ChatEvaluator instance
-        show_evaluated: Whether to show already evaluated pairs
-        limit: Maximum number of pairs to return
+        show_evaluated: If True, include already evaluated pairs
+        force_reload: If True, force reload from dataset
         
     Returns:
         DataFrame with QA pairs
     """
-    qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=200)  # Get more than needed for filtering
-    annotations = evaluator.get_annotations()
-    
-    # Create set of evaluated conversation IDs
-    evaluated_ids = set(a.get("conversation_id") for a in annotations)
-    
-    # Filter QA pairs based on show_evaluated parameter
-    if not show_evaluated:
-        qa_pairs = [pair for pair in qa_pairs if pair.get("conversation_id") not in evaluated_ids]
-    
-    # Limit the results
-    qa_pairs = qa_pairs[:limit]
-    
-    # Create DataFrame
-    if qa_pairs:
-        df = pd.DataFrame(qa_pairs)
+    try:
+        # Get QA pairs with potential force reload
+        qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=100, force_reload=force_reload)
         
-        # Add "Evaluated" column
-        df["evaluated"] = df["conversation_id"].apply(lambda x: "Yes" if x in evaluated_ids else "No")
+        # Get annotations
+        annotations = evaluator.get_annotations(force_reload=force_reload)
+        evaluated_ids = {a.get("conversation_id") for a in annotations}
         
-        # Select and rename columns for display
-        display_df = df[["conversation_id", "question", "original_answer", "evaluated"]].copy()
-        display_df = display_df.rename(columns={
-            "conversation_id": "ID",
-            "question": "Question",
-            "original_answer": "Answer",
-            "evaluated": "Evaluated"
-        })
+        # Filter out already evaluated pairs if needed
+        if not show_evaluated:
+            qa_pairs = [qa for qa in qa_pairs if qa["conversation_id"] not in evaluated_ids]
         
-        # Truncate long text for better display
-        display_df["Question"] = display_df["Question"].apply(lambda x: (x[:150] + "...") if len(x) > 150 else x)
-        display_df["Answer"] = display_df["Answer"].apply(lambda x: (x[:150] + "...") if len(x) > 150 else x)
-        
-        return display_df
-    
-    # Return empty DataFrame if no pairs
-    return pd.DataFrame(columns=["ID", "Question", "Answer", "Evaluated"])
+        # Convert to DataFrame
+        if qa_pairs:
+            import pandas as pd
+            
+            df = pd.DataFrame([
+                {
+                    "Conversation ID": qa["conversation_id"],
+                    "Question": qa["question"][:50] + "..." if len(qa["question"]) > 50 else qa["question"],
+                    "Timestamp": qa.get("timestamp", ""),
+                    "Evaluated": "Yes" if qa["conversation_id"] in evaluated_ids else "No"
+                }
+                for qa in qa_pairs
+            ])
+            return df
+        else:
+            import pandas as pd
+            return pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"])
+    except Exception as e:
+        logger.error(f"Error getting QA pairs dataframe: {e}")
+        import pandas as pd
+        return pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"])
 
 def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) -> Tuple[str, str, str, int, int, int, int, int, str]:
     """

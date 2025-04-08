@@ -23,7 +23,7 @@ from config.settings import (
 class ChatEvaluator:
     def __init__(self, hf_token: str = None, dataset_id: str = None):
         """
-        Initialize chat evaluator
+        Initialize chat evaluator with lazy loading
         
         Args:
             hf_token: Hugging Face token
@@ -33,9 +33,14 @@ class ChatEvaluator:
         self.dataset_id = dataset_id or DATASET_ID
         self.api = HfApi(token=self.hf_token)
         
-        # Используем пути из settings
+        # Using paths from settings
         self.chat_history_path = DATASET_CHAT_HISTORY_PATH
         self.annotations_path = DATASET_ANNOTATIONS_PATH
+        
+        # Cache for chat histories and QA pairs
+        self._chat_histories = None
+        self._qa_pairs = None
+        self._annotations = None
         
         # Ensure directories exist in dataset
         try:
@@ -69,11 +74,27 @@ class ChatEvaluator:
             logger.error(f"Error ensuring dataset structure: {e}")
             raise
 
-   
-    def get_chat_history(self) -> List[Dict[str, Any]]:
+    def reset_cache(self):
+        """
+        Reset the cache to force reload of data
+        """
+        self._chat_histories = None
+        self._qa_pairs = None
+        self._annotations = None
+        logger.info("Chat evaluator cache has been reset")
+
+    def get_chat_history(self, force_reload=False) -> List[Dict[str, Any]]:
         """
         Get all chat histories from the dataset
+        
+        Args:
+            force_reload: If True, ignore cache and reload from dataset
         """
+        # Return cached data if available and not forcing reload
+        if self._chat_histories is not None and not force_reload:
+            logger.debug("Returning cached chat histories")
+            return self._chat_histories
+        
         try:
             # Get list of all files in chat history directory
             files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")  
@@ -81,7 +102,7 @@ class ChatEvaluator:
             # Filter for chat history files
             chat_path = f"{self.chat_history_path}/"
             chat_files = [f for f in files if f.startswith(chat_path) and f.endswith('.json')]
-            logger.debug(f"Found {len(chat_files)} chat files")  # Более компактный лог
+            logger.debug(f"Found {len(chat_files)} chat files")  # More compact log
 
             histories = []
             for file in chat_files:
@@ -102,6 +123,8 @@ class ChatEvaluator:
                     logger.error(f"Error processing chat file {file}: {e}")
                     continue
 
+            # Cache the results
+            self._chat_histories = histories
             return histories
 
         except Exception as e:
@@ -133,20 +156,26 @@ class ChatEvaluator:
         logger.debug(f"Extracted {len(qa_pairs)} QA pairs")
         return qa_pairs
 
-    def get_qa_pairs_for_evaluation(self, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_qa_pairs_for_evaluation(self, limit: int = 50, force_reload=False) -> List[Dict[str, Any]]:
         """
         Extract question-answer pairs for evaluation
         
         Args:
             limit: Maximum number of pairs to return
+            force_reload: If True, force reload from dataset
             
         Returns:
             List of QA pairs with metadata
         """
-        chat_data = self.get_chat_history()
+        # Return cached data if available and not forcing reload
+        if self._qa_pairs is not None and not force_reload:
+            logger.debug("Returning cached QA pairs")
+            return self._qa_pairs[:limit]  # Respect the limit parameter
+        
+        chat_data = self.get_chat_history(force_reload=force_reload)
         qa_pairs = []
         
-        print(f"Debug - Processing {len(chat_data)} chat histories")  # Debug print
+        logger.debug(f"Processing {len(chat_data)} chat histories")
         
         for chat in chat_data:
             conversation_id = chat.get("conversation_id", "unknown")
@@ -170,24 +199,26 @@ class ChatEvaluator:
                             "question_timestamp": messages[i].get("timestamp", ""),
                             "answer_timestamp": messages[i+1].get("timestamp", "")
                         })
-                        
-                        # Check if we've reached the limit
-                        if len(qa_pairs) >= limit:
-                            print(f"Debug - Reached limit of {limit} QA pairs")  # Debug print
-                            return qa_pairs
         
-        print(f"Debug - Extracted {len(qa_pairs)} QA pairs")  # Debug print
-        return qa_pairs
+        # Cache the results
+        self._qa_pairs = qa_pairs
+        
+        logger.debug(f"Extracted {len(qa_pairs)} QA pairs")
+        # Return up to the limit
+        return qa_pairs[:limit]
     
-    def get_evaluation_status(self) -> Dict[str, int]:
+    def get_evaluation_status(self, force_reload=False) -> Dict[str, int]:
         """
         Get status of evaluated QA pairs
         
+        Args:
+            force_reload: If True, force reload from dataset
+            
         Returns:
             Dictionary with counts of evaluated and unevaluated QA pairs
         """
-        all_pairs = self.get_qa_pairs_for_evaluation(limit=1000)  # Get a large sample
-        evaluated_pairs = self.get_annotations()
+        all_pairs = self.get_qa_pairs_for_evaluation(limit=1000, force_reload=force_reload)  # Get a large sample
+        evaluated_pairs = self.get_annotations(force_reload=force_reload)
         
         # Count evaluated conversation IDs
         evaluated_ids = set(item.get("conversation_id") for item in evaluated_pairs)
@@ -246,16 +277,27 @@ class ChatEvaluator:
                 repo_type="dataset"
             )
             
+            # Reset annotations cache
+            self._annotations = None
+            
             return True, "Annotation saved successfully"
             
         except Exception as e:
             logger.error(f"Error saving annotation: {e}")
             return False, f"Failed to save annotation: {str(e)}"
     
-    def get_annotations(self) -> List[Dict[str, Any]]:
+    def get_annotations(self, force_reload=False) -> List[Dict[str, Any]]:
         """
         Get all saved annotations from dataset
+        
+        Args:
+            force_reload: If True, force reload from dataset
         """
+        # Return cached data if available and not forcing reload
+        if self._annotations is not None and not force_reload:
+            logger.debug("Returning cached annotations")
+            return self._annotations
+        
         try:
             annotations = []
             files = self.api.list_repo_files(self.dataset_id, repo_type="dataset")
@@ -277,25 +319,36 @@ class ChatEvaluator:
             
             # Sort by timestamp (newest first)
             annotations.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            
+            # Cache the results
+            self._annotations = annotations
+            
             return annotations
             
         except Exception as e:
             logger.error(f"Error getting annotations: {e}")
             return []
     
-    def get_annotation_by_conversation_id(self, conversation_id: str) -> Optional[Dict[str, Any]]:
+    def get_annotation_by_conversation_id(self, conversation_id: str, force_reload=False) -> Optional[Dict[str, Any]]:
         """
         Get annotation for a specific conversation
         
         Args:
             conversation_id: Conversation ID to look for
+            force_reload: If True, force reload from dataset
             
         Returns:
             Annotation object or None if not found
         """
+        # If we have cached annotations and not forcing reload, look there first
+        if self._annotations is not None and not force_reload:
+            for annotation in self._annotations:
+                if annotation.get("conversation_id") == conversation_id:
+                    return annotation
+        
         try:
-            # Используем DATASET_ANNOTATIONS_PATH для формирования пути
-            filename = f"{DATASET_ANNOTATIONS_PATH}/annotation_{conversation_id}.json"
+            # Try direct file access
+            filename = f"{self.annotations_path}/annotation_{conversation_id}.json"
             
             # Download and parse annotation file
             content = self.api.hf_hub_download(
@@ -405,20 +458,3 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

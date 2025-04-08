@@ -1106,18 +1106,26 @@ with gr.Blocks() as demo:
                         with gr.Column(scale=1):
                             evaluation_status = gr.Textbox(label="Evaluation Status", interactive=False)
                             refresh_status_btn = gr.Button("Refresh Status")
+                            
+                            # Add status message for data refresh
+                            refresh_data_status = gr.Textbox(
+                                label="Refresh Status", 
+                                interactive=False,
+                                visible=True
+                            )
                         
                         with gr.Column(scale=1):
                             evaluation_report = gr.HTML(label="Evaluation Report")
                             refresh_report_btn = gr.Button("Generate Report")
                     
-                    # QA pairs table section
-                    show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
-                    qa_table = gr.DataFrame(
-                        get_qa_pairs_dataframe(chat_evaluator),
-                        interactive=True,
-                        wrap=True
-                    )
+                            # QA pairs table section
+                            show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
+                            import pandas as pd
+                            qa_table = gr.DataFrame(
+                            pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]),
+                            interactive=True,
+                            wrap=True
+                        )
                     
                     # Conversation selection section
                     gr.Markdown("### Select Conversation to Evaluate")
@@ -1160,9 +1168,9 @@ with gr.Blocks() as demo:
             
             # Event handlers for Chat Evaluation
             refresh_status_btn.click(
-                fn=lambda: get_evaluation_status(chat_evaluator),
+                fn=lambda: get_evaluation_status(chat_evaluator, force_reload=True),
                 inputs=[],
-                outputs=[evaluation_status]
+                outputs=[evaluation_status, qa_table, refresh_data_status]
             )
             
             refresh_report_btn.click(
