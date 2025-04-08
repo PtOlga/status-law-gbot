@@ -899,10 +899,10 @@ with gr.Blocks() as demo:
                         clear_btn = gr.Button("Clear")
 
             with gr.Row(equal_height=True):
-                with gr.Column(scale=0.2):  
+                with gr.Column(scale=1):  
                     gr.Markdown("")  # Empty column for centering
 
-                with gr.Column(scale=12):  
+                with gr.Column(scale=20):  
                     system_prompt = gr.TextArea(
                         label="System Prompt (editing will change bot behavior)",
                         value=saved_system_prompt,
@@ -910,7 +910,7 @@ with gr.Blocks() as demo:
                         lines=8
                     )
 
-                with gr.Column(scale=0.2):  
+                with gr.Column(scale=1):  
                     gr.Markdown("")  # Empty column for centering
 
 
