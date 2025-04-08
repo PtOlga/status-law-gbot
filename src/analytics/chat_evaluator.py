@@ -81,8 +81,7 @@ class ChatEvaluator:
             # Filter for chat history files
             chat_path = f"{self.chat_history_path}/"
             chat_files = [f for f in files if f.startswith(chat_path) and f.endswith('.json')]
-            logger.info(f"Found chat files: {len(chat_files)}")
-            logger.info(f"Chat files: {chat_files}")
+            logger.debug(f"Found {len(chat_files)} chat files")  # Более компактный лог
 
             histories = []
             for file in chat_files:
@@ -406,6 +405,7 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
 
 
 

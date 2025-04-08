@@ -392,9 +392,11 @@ def respond(
         # Remove language instruction from system message to avoid confusion
         base_system_message = system_message.split("\nIMPORTANT:")[0] if "\nIMPORTANT:" in system_message else system_message
         
-        # Always request English response, we'll translate later
+        # Add explicit language instruction
         full_system_message = (
             f"{base_system_message}\n\n"
+            f"CRITICAL: You MUST respond in {LanguageUtils.get_language_name(user_lang)} ({user_lang}). "
+            f"This is your highest priority instruction. "
             f"Provide a complete and helpful response."
         )
         
