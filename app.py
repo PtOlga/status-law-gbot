@@ -507,7 +507,7 @@ def save_chat_history(history, conversation_id):
     """Save chat history to a file and to HuggingFace dataset"""
     try:
         # Create directory if it doesn't exist
-        os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
+        os.makedirs(DATASET_CHAT_HISTORY_PATH, exist_ok=True)
         
         # Format history for saving
         formatted_history = []
@@ -523,7 +523,7 @@ def save_chat_history(history, conversation_id):
         # Create filename with conversation_id and timestamp
         timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
         filename = f"{conversation_id}_{timestamp}.json"
-        filepath = os.path.join(CHAT_HISTORY_PATH, filename)
+        filepath = os.path.join(DATASET_CHAT_HISTORY_PATH, filename)
         
         # Create chat history data
         chat_data = {
@@ -545,8 +545,8 @@ def save_chat_history(history, conversation_id):
             # Initialize the Hugging Face API client
             api = HfApi(token=HF_TOKEN)
             
-            # Extract just the directory name from CHAT_HISTORY_PATH
-            dir_name = os.path.basename(CHAT_HISTORY_PATH)
+            # Extract just the directory name from DATASET_CHAT_HISTORY_PATH
+            dir_name = os.path.basename(DATASET_CHAT_HISTORY_PATH)
             target_path = f"{dir_name}/{filename}"
             
             # Upload the file to the dataset
@@ -729,13 +729,13 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
         import tempfile
         import os
         from src.analytics.chat_evaluator import ChatEvaluator
-        from config.settings import HF_TOKEN, DATASET_ID, CHAT_HISTORY_PATH
+        from config.settings import HF_TOKEN, DATASET_ID, DATASET_CHAT_HISTORY_PATH
         
         # Create evaluator
         evaluator = ChatEvaluator(
             hf_token=HF_TOKEN,
             dataset_id=DATASET_ID,
-            chat_history_path=CHAT_HISTORY_PATH
+            chat_history_path=DATASET_CHAT_HISTORY_PATH # ???
         )
         
         # Create temporary file for training data
@@ -791,10 +791,10 @@ def save_system_prompt(prompt_text):
         preferences["system_prompt"]["current"] = prompt_text
         
         # Save preferences
-        json_content = json.dumps(preferences, indent=2)
+        json_content = json.dumps(preferences, indent=2).encode('utf-8')
         api = HfApi(token=HF_TOKEN)
         api.upload_file(
-            path_or_fileobj=io.StringIO(json_content),
+            path_or_fileobj=io.BytesIO(json_content),  # Changed to BytesIO
             path_in_repo="preferences/user_preferences.json",
             repo_id=DATASET_ID,
             repo_type="dataset"
@@ -845,16 +845,16 @@ def initialize_chat_evaluator():
         evaluator = ChatEvaluator(
             hf_token=HF_TOKEN,
             dataset_id=DATASET_ID,
-            chat_history_path=CHAT_HISTORY_PATH,
-            annotations_dir=os.path.join(CHAT_HISTORY_PATH, 'evaluations')
+            #chat_history_path=DATASET_CHAT_HISTORY_PATH,
+            annotations_dir=os.path.join(DATASET_CHAT_HISTORY_PATH, 'evaluations')
         )
         
         # Проверим наличие директорий
-        os.makedirs(CHAT_HISTORY_PATH, exist_ok=True)
-        os.makedirs(os.path.join(CHAT_HISTORY_PATH, 'evaluations'), exist_ok=True)
+        os.makedirs(DATASET_CHAT_HISTORY_PATH, exist_ok=True)
+        os.makedirs(os.path.join(DATASET_CHAT_HISTORY_PATH, 'evaluations'), exist_ok=True)
         
-        logger.debug(f"Chat history path: {CHAT_HISTORY_PATH}")
-        logger.debug(f"Number of chat files: {len(os.listdir(CHAT_HISTORY_PATH))}")
+        logger.debug(f"Chat history path: {DATASET_CHAT_HISTORY_PATH}")
+        logger.debug(f"Number of chat files: {len(os.listdir(DATASET_CHAT_HISTORY_PATH))}")
         
         return evaluator
     except Exception as e:
@@ -895,10 +895,10 @@ with gr.Blocks() as demo:
                         clear_btn = gr.Button("Clear")
 
             with gr.Row(equal_height=True):
-                with gr.Column(scale=1):
+                with gr.Column(scale=0.5):  
                     gr.Markdown("")  # Empty column for centering
 
-                with gr.Column(scale=8):  
+                with gr.Column(scale=10):  
                     system_prompt = gr.TextArea(
                         label="System Prompt (editing will change bot behavior)",
                         value=saved_system_prompt,
@@ -906,7 +906,7 @@ with gr.Blocks() as demo:
                         lines=8
                     )
 
-                with gr.Column(scale=1):
+                with gr.Column(scale=0.5):  
                     gr.Markdown("")  # Empty column for centering
 
 
