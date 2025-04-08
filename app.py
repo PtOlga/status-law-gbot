@@ -568,7 +568,7 @@ def save_chat_history(history, conversation_id):
         logger.error(f"Error saving chat history: {str(e)}")
         return False
 
-def respond_and_clear(message, history, conversation_id):
+def respond_and_clear(message, history, conversation_id, system_prompt):
     """Wrapper function with proper output handling"""
     try:
         # Get current model parameters
@@ -579,7 +579,7 @@ def respond_and_clear(message, history, conversation_id):
             message=message,
             history=history if history else [],
             conversation_id=conversation_id,
-            system_message=DEFAULT_SYSTEM_MESSAGE,
+            system_message=system_prompt,  # Используем переданный промпт вместо DEFAULT_SYSTEM_MESSAGE
             max_tokens=params['max_length'],
             temperature=params['temperature'],
             top_p=params['top_p']
@@ -778,6 +778,32 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
         
     except Exception as e:
         return False, f"Error during fine-tuning from annotations: {str(e)}"
+    
+def save_system_prompt(prompt_text):
+    """Save system prompt to user preferences"""
+    try:
+        preferences = load_user_preferences()
+        
+        # Добавляем промпт в настройки
+        if "system_prompt" not in preferences:
+            preferences["system_prompt"] = {}
+            
+        preferences["system_prompt"]["current"] = prompt_text
+        
+        # Сохраняем настройки
+        json_content = json.dumps(preferences, indent=2)
+        api = HfApi(token=HF_TOKEN)
+        api.upload_file(
+            path_or_fileobj=io.StringIO(json_content),
+            path_in_repo="preferences/user_preferences.json",
+            repo_id=DATASET_ID,
+            repo_type="dataset"
+        )
+        
+        return "Системный промпт сохранен"
+    except Exception as e:
+        logger.error(f"Error saving system prompt: {str(e)}")
+        return f"Ошибка сохранения промпта: {str(e)}"    
 
 def initialize_app():
     """Initialize app with user preferences"""
@@ -804,8 +830,13 @@ def initialize_app():
         token=HF_TOKEN
     )
     
+    # Загружаем сохраненный системный промпт из предпочтений или используем DEFAULT_SYSTEM_MESSAGE
+    system_prompt_text = DEFAULT_SYSTEM_MESSAGE
+    if "system_prompt" in preferences and "current" in preferences["system_prompt"]:
+        system_prompt_text = preferences["system_prompt"]["current"]
+    
     logger.info(f"App initialized with model: {ACTIVE_MODEL['name']}")
-    return selected_model
+    return selected_model, system_prompt_text
 
 def initialize_chat_evaluator():
     """Initialize chat evaluator with proper paths"""
@@ -830,7 +861,7 @@ def initialize_chat_evaluator():
         raise
 
 # Initialize HF client with token at startup
-selected_model = initialize_app()
+selected_model, saved_system_prompt = initialize_app()
 
 # Create interface
 with gr.Blocks() as demo:
@@ -861,19 +892,34 @@ with gr.Blocks() as demo:
                         )
                         submit_btn = gr.Button("Send", variant="primary")
                         clear_btn = gr.Button("Clear")
+                        
+                        with gr.Row():
+                            system_prompt = gr.TextArea(
+                            label="System Prompt (редактирование изменит поведение бота)",
+                            value=DEFAULT_SYSTEM_MESSAGE,
+                            placeholder="Enter system prompt...",
+                            lines=5
+                        )
 
             # Add event handlers
+            # Обновляем обработчики событий
             submit_btn.click(
                 respond_and_clear,
-                [msg, chatbot, conversation_id],
+                [msg, chatbot, conversation_id, system_prompt],  # Добавляем system_prompt
                 [chatbot, conversation_id, msg]
             )
-            # Add Enter key handler
+            # Обновляем обработчик нажатия Enter
             msg.submit(
                 respond_and_clear,
-                [msg, chatbot, conversation_id],
+                [msg, chatbot, conversation_id, system_prompt],  # Добавляем system_prompt
                 [chatbot, conversation_id, msg]
             )
+            # Добавляем обработчик изменения промпта
+            system_prompt.change(
+                save_system_prompt,
+                inputs=[system_prompt],
+                outputs=[]
+                )
             
             clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
 
