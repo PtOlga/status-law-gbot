@@ -893,13 +893,25 @@ with gr.Blocks() as demo:
                         submit_btn = gr.Button("Send", variant="primary")
                         clear_btn = gr.Button("Clear")
                         
-                        with gr.Row():
-                            system_prompt = gr.TextArea(
-                            label="System Prompt (редактирование изменит поведение бота)",
-                            value=DEFAULT_SYSTEM_MESSAGE,
-                            placeholder="Enter system prompt...",
-                            lines=5
-                        )
+            # Завершаем предыдущий блок с колонкой
+            # Создаем новый блок для системного промпта в центре и шире
+            with gr.Row(equal_height=True):
+                with gr.Column(scale=1):
+                # Пустая колонка слева для центрирования
+                gr.Markdown("")
+    
+                with gr.Column(scale=8):  # Увеличиваем масштаб для ширины
+                    system_prompt = gr.TextArea(
+                    label="System Prompt (редактирование изменит поведение бота)",
+                    value=saved_system_prompt,
+                    placeholder="Enter system prompt...",
+                    lines=8  # Увеличиваем количество строк
+                )
+    
+                with gr.Column(scale=1):
+                # Пустая колонка справа для центрирования
+                gr.Markdown("")    
+
 
             # Add event handlers
             # Обновляем обработчики событий
