@@ -10,13 +10,13 @@ import os
 # Third-party imports
 import gradio as gr
 from huggingface_hub import HfApi, InferenceClient
-from langdetect import detect
+from langdetect import detect, LangDetectException
 import langdetect
 from dotenv import load_dotenv
 import requests
 from datasets import load_dataset
 
-# Установка seed для стабильного определения языка
+# Set seed for consistent results
 langdetect.DetectorFactory.seed = 0
 
 # Load environment variables
@@ -352,28 +352,12 @@ def detect_language(text: str) -> str:
             logger.debug(f"Text too short for reliable detection: '{text}'")
             return "en"
             
-        # First detection with langdetect
-        from langdetect import detect, LangDetectException, DetectorFactory
-        
-        # Initialize DetectorFactory properly
-        DetectorFactory.seed = 0  # For consistent results
-        detector = DetectorFactory.create()
-        detector.append(text.strip())
-        
+        # Use simple detect() function instead of DetectorFactory
         try:
-            lang_code = detector.detect()
+            lang_code = detect(text.strip())
             logger.debug(f"Detected language: {lang_code}")
-            
-            # Verify detection with confidence check
-            if len(text) > 50:
-                lang_probabilities = detector.get_probabilities()
-                
-                # If top language has low probability, fallback to English
-                if lang_probabilities and lang_probabilities[0].prob < 0.5:
-                    logger.warning(f"Low confidence detection ({lang_probabilities[0].prob:.2f}) for '{lang_code}', defaulting to English")
-                    return "en"
-            
             return lang_code
+            
         except LangDetectException as e:
             logger.warning(f"LangDetect exception: {e}")
             return "en"
@@ -902,7 +886,7 @@ with gr.Blocks() as demo:
                 with gr.Column(scale=1):  
                     gr.Markdown("")  # Empty column for centering
 
-                with gr.Column(scale=20):  
+                with gr.Column(scale=40):  
                     system_prompt = gr.TextArea(
                         label="System Prompt (editing will change bot behavior)",
                         value=saved_system_prompt,
