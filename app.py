@@ -11,9 +11,13 @@ import os
 import gradio as gr
 from huggingface_hub import HfApi, InferenceClient
 from langdetect import detect
+import langdetect
 from dotenv import load_dotenv
 import requests
 from datasets import load_dataset
+
+# Установка seed для стабильного определения языка
+langdetect.DetectorFactory.seed = 0
 
 # Load environment variables
 load_dotenv()
@@ -895,10 +899,10 @@ with gr.Blocks() as demo:
                         clear_btn = gr.Button("Clear")
 
             with gr.Row(equal_height=True):
-                with gr.Column(scale=0.5):  
+                with gr.Column(scale=0.2):  
                     gr.Markdown("")  # Empty column for centering
 
-                with gr.Column(scale=10):  
+                with gr.Column(scale=12):  
                     system_prompt = gr.TextArea(
                         label="System Prompt (editing will change bot behavior)",
                         value=saved_system_prompt,
@@ -906,7 +910,7 @@ with gr.Blocks() as demo:
                         lines=8
                     )
 
-                with gr.Column(scale=0.5):  
+                with gr.Column(scale=0.2):  
                     gr.Markdown("")  # Empty column for centering
 
 
@@ -924,11 +928,16 @@ with gr.Blocks() as demo:
                 [chatbot, conversation_id, msg]
             )
             # Добавляем обработчик изменения промпта
+            system_prompt_status = gr.Textbox(
+                label="Status",
+                interactive=False,
+                visible=True
+            )
             system_prompt.change(
                 save_system_prompt,
                 inputs=[system_prompt],
-                outputs=[]
-                )
+                outputs=[system_prompt_status]
+            )
             
             clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
 
