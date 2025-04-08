@@ -8,7 +8,7 @@ import datetime
 from typing import List, Dict, Any, Tuple, Optional
 import io
 import logging
-#from huggingface_hub import HfApi
+from huggingface_hub import HfApi
 
 logger = logging.getLogger(__name__)
 
