@@ -579,7 +579,7 @@ def respond_and_clear(message, history, conversation_id, system_prompt):
             message=message,
             history=history if history else [],
             conversation_id=conversation_id,
-            system_message=system_prompt,  # Используем переданный промпт вместо DEFAULT_SYSTEM_MESSAGE
+            system_message=system_prompt,  # Using provided prompt instead of default
             max_tokens=params['max_length'],
             temperature=params['temperature'],
             top_p=params['top_p']
@@ -784,13 +784,13 @@ def save_system_prompt(prompt_text):
     try:
         preferences = load_user_preferences()
         
-        # Добавляем промпт в настройки
+        # Add prompt to preferences
         if "system_prompt" not in preferences:
             preferences["system_prompt"] = {}
             
         preferences["system_prompt"]["current"] = prompt_text
         
-        # Сохраняем настройки
+        # Save preferences
         json_content = json.dumps(preferences, indent=2)
         api = HfApi(token=HF_TOKEN)
         api.upload_file(
@@ -800,10 +800,10 @@ def save_system_prompt(prompt_text):
             repo_type="dataset"
         )
         
-        return "Системный промпт сохранен"
+        return "System prompt saved successfully"
     except Exception as e:
         logger.error(f"Error saving system prompt: {str(e)}")
-        return f"Ошибка сохранения промпта: {str(e)}"    
+        return f"Error saving prompt: {str(e)}"    
 
 def initialize_app():
     """Initialize app with user preferences"""
@@ -836,6 +836,7 @@ def initialize_app():
         system_prompt_text = preferences["system_prompt"]["current"]
     
     logger.info(f"App initialized with model: {ACTIVE_MODEL['name']}")
+    logger.info(f"Chat histories will be saved to: {DATASET_CHAT_HISTORY_PATH}")
     return selected_model, system_prompt_text
 
 def initialize_chat_evaluator():
@@ -892,25 +893,21 @@ with gr.Blocks() as demo:
                         )
                         submit_btn = gr.Button("Send", variant="primary")
                         clear_btn = gr.Button("Clear")
-                        
-            # Завершаем предыдущий блок с колонкой
-            # Создаем новый блок для системного промпта в центре и шире
+
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
-                # Пустая колонка слева для центрирования
-                gr.Markdown("")
-    
-                with gr.Column(scale=8):  # Увеличиваем масштаб для ширины
+                    gr.Markdown("")  # Empty column for centering
+
+                with gr.Column(scale=8):  
                     system_prompt = gr.TextArea(
-                    label="System Prompt (редактирование изменит поведение бота)",
-                    value=saved_system_prompt,
-                    placeholder="Enter system prompt...",
-                    lines=8  # Увеличиваем количество строк
-                )
-    
+                        label="System Prompt (editing will change bot behavior)",
+                        value=saved_system_prompt,
+                        placeholder="Enter system prompt...",
+                        lines=8
+                    )
+
                 with gr.Column(scale=1):
-                # Пустая колонка справа для центрирования
-                gr.Markdown("")    
+                    gr.Markdown("")  # Empty column for centering
 
 
             # Add event handlers
