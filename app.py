@@ -395,8 +395,7 @@ def respond(
         # Always request English response, we'll translate later
         full_system_message = (
             f"{base_system_message}\n\n"
-            f"IMPORTANT: Always respond in English, no matter what language the user speaks. "
-            f"Provide a complete and helpful response - we will handle translation separately."
+            f"Provide a complete and helpful response."
         )
         
         # --- API Request ---
