@@ -883,8 +883,8 @@ with gr.Blocks() as demo:
                         clear_btn = gr.Button("Clear")
 
             with gr.Row(equal_height=True):
-                with gr.Column(scale=1):  
-                    gr.Markdown("")  # Empty column for centering
+                #with gr.Column(scale=1):  
+                #    gr.Markdown("")  # Empty column for centering
 
                 with gr.Column(scale=40):  
                     system_prompt = gr.TextArea(
@@ -894,8 +894,8 @@ with gr.Blocks() as demo:
                         lines=8
                     )
 
-                with gr.Column(scale=1):  
-                    gr.Markdown("")  # Empty column for centering
+                #with gr.Column(scale=1):  
+                #    gr.Markdown("")  # Empty column for centering
 
 
             # Add event handlers
