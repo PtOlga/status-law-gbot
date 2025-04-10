@@ -802,7 +802,7 @@ def save_system_prompt(prompt_text):
     except Exception as e:
         logger.error(f"Error saving system prompt: {str(e)}")
         return f"Error saving prompt: {str(e)}"    
-    
+
 def delete_conversation_from_huggingface(conversation_id):
     """
     Delete conversation files from Hugging Face dataset by ID
@@ -823,16 +823,18 @@ def delete_conversation_from_huggingface(conversation_id):
         # Get list of files in dataset 
         try:
             # Get all files in dataset
-            files = api.list_files_info(
+            files = api.list_repo_files(
                 repo_id=DATASET_ID,
                 repo_type="dataset"
             )
             
             # Find files with matching conversation ID in chat history
+            # В пути может быть chat_history или chat-history
+            chat_dir = os.path.basename(DATASET_CHAT_HISTORY_PATH)
             chat_files = [
-                file.rfilename for file in files 
-                if file.rfilename.startswith(f"{DATASET_CHAT_HISTORY_PATH}/") and 
-                f"{conversation_id}_" in os.path.basename(file.rfilename)
+                file for file in files 
+                if (file.startswith(f"{chat_dir}/") or file.startswith(f"chat_history/") or file.startswith(f"chat-history/")) and 
+                f"{conversation_id}_" in os.path.basename(file)
             ]
             
             if not chat_files:
@@ -851,17 +853,30 @@ def delete_conversation_from_huggingface(conversation_id):
                     logger.error(f"Error deleting file {file_path} from dataset: {str(e)}")
             
             # Try to delete annotation file if it exists
-            annotation_path = f"{DATASET_ANNOTATIONS_PATH}/annotation_{conversation_id}.json"
-            try:
-                api.delete_file(
-                    repo_id=DATASET_ID,
-                    repo_type="dataset",
-                    path_in_repo=annotation_path
-                )
-                logger.info(f"Deleted annotation file from HF dataset: {annotation_path}")
-            except Exception as e:
-                # It's okay if annotation file doesn't exist
-                logger.debug(f"Could not delete annotation file {annotation_path}: {str(e)}")
+            # Учитываем разные варианты пути к аннотациям
+            annotations_base = os.path.basename(DATASET_ANNOTATIONS_PATH)
+            annotation_paths = [
+                f"{annotations_base}/annotation_{conversation_id}.json",
+                f"{annotations_base}/evaluation_{conversation_id}.json",
+                f"annotations/annotation_{conversation_id}.json",
+                f"annotations/evaluation_{conversation_id}.json",
+                f"evaluations/annotation_{conversation_id}.json",
+                f"evaluations/evaluation_{conversation_id}.json",
+                f"{chat_dir}/evaluations/evaluation_{conversation_id}.json"
+            ]
+            
+            for annotation_path in annotation_paths:
+                try:
+                    if annotation_path in files:
+                        api.delete_file(
+                            repo_id=DATASET_ID,
+                            repo_type="dataset",
+                            path_in_repo=annotation_path
+                        )
+                        logger.info(f"Deleted annotation file from HF dataset: {annotation_path}")
+                except Exception as e:
+                    # It's okay if annotation file doesn't exist
+                    logger.debug(f"Could not delete annotation file {annotation_path}: {str(e)}")
                 
             return True, f"Deleted {len(chat_files)} file(s) from dataset for conversation: {conversation_id}"
             
@@ -870,7 +885,7 @@ def delete_conversation_from_huggingface(conversation_id):
             
     except Exception as e:
         logger.error(f"Error deleting conversation from dataset: {str(e)}")
-        return False, f"Error deleting conversation from dataset: {str(e)}"    
+        return False, f"Error deleting conversation from dataset: {str(e)}"
     
 def delete_conversation(conversation_id, evaluator):
     """
