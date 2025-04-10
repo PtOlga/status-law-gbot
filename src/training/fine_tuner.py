@@ -230,58 +230,116 @@ class FineTuner:
             (success, message)
         """
         try:
-            # Prepare model for training
+            logger.info(f"Starting training process with parameters:")
+            logger.info(f"- Training data path: {training_data_path}")
+            logger.info(f"- Number of epochs: {num_train_epochs}")
+            logger.info(f"- Batch size: {per_device_train_batch_size}")
+            logger.info(f"- Learning rate: {learning_rate}")
+            logger.info(f"- Device: {self.device}")
+            
+            logger.info("Preparing model for training...")
             self.prepare_model_for_training()
             
-            # Load dataset
-            dataset = load_dataset('json', data_files=training_data_path)['train']
+            logger.info("Loading dataset...")
+            if not os.path.exists(training_data_path):
+                error_msg = f"Training data file not found: {training_data_path}"
+                logger.error(error_msg)
+                return False, error_msg
+                
+            try:
+                dataset = load_dataset('json', data_files=training_data_path)['train']
+                logger.info(f"Dataset loaded successfully. Size: {len(dataset)} examples")
+            except Exception as e:
+                error_msg = f"Failed to load dataset: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            # Tokenize dataset
-            tokenized_dataset = self.tokenize_dataset(dataset)
+            logger.info("Tokenizing dataset...")
+            try:
+                tokenized_dataset = self.tokenize_dataset(dataset)
+                logger.info("Dataset tokenized successfully")
+            except Exception as e:
+                error_msg = f"Failed to tokenize dataset: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            # Create data collator
-            data_collator = DataCollatorForLanguageModeling(
-                tokenizer=self.tokenizer,
-                mlm=False
-            )
+            logger.info("Creating data collator...")
+            try:
+                data_collator = DataCollatorForLanguageModeling(
+                    tokenizer=self.tokenizer,
+                    mlm=False
+                )
+            except Exception as e:
+                error_msg = f"Failed to create data collator: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            # Setup training arguments
-            training_args = TrainingArguments(
-                output_dir=self.output_dir,
-                num_train_epochs=num_train_epochs,
-                per_device_train_batch_size=per_device_train_batch_size,
-                gradient_accumulation_steps=gradient_accumulation_steps,
-                learning_rate=learning_rate,
-                weight_decay=0.01,
-                warmup_ratio=0.1,
-                logging_steps=logging_steps,
-                save_strategy=save_strategy,
-                save_total_limit=2,
-                remove_unused_columns=False,
-                push_to_hub=False,
-                report_to="tensorboard",
-                load_best_model_at_end=True
-            )
+            logger.info("Setting up training arguments...")
+            try:
+                training_args = TrainingArguments(
+                    output_dir=self.output_dir,
+                    num_train_epochs=num_train_epochs,
+                    per_device_train_batch_size=per_device_train_batch_size,
+                    gradient_accumulation_steps=gradient_accumulation_steps,
+                    learning_rate=learning_rate,
+                    weight_decay=0.01,
+                    warmup_ratio=0.1,
+                    logging_steps=logging_steps,
+                    save_strategy=save_strategy,
+                    save_total_limit=2,
+                    remove_unused_columns=False,
+                    push_to_hub=False,
+                    report_to="tensorboard",
+                    load_best_model_at_end=True
+                )
+            except Exception as e:
+                error_msg = f"Failed to setup training arguments: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            # Create trainer
-            trainer = Trainer(
-                model=self.model,
-                args=training_args,
-                train_dataset=tokenized_dataset,
-                data_collator=data_collator,
-                tokenizer=self.tokenizer
-            )
+            logger.info("Initializing trainer...")
+            try:
+                trainer = Trainer(
+                    model=self.model,
+                    args=training_args,
+                    train_dataset=tokenized_dataset,
+                    data_collator=data_collator,
+                    tokenizer=self.tokenizer
+                )
+            except Exception as e:
+                error_msg = f"Failed to initialize trainer: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            # Start training
-            trainer.train()
+            logger.info("Starting training...")
+            try:
+                trainer.train()
+                logger.info("Training completed successfully")
+            except Exception as e:
+                error_msg = f"Training failed: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            # Save model
-            trainer.save_model()
+            logger.info("Saving model...")
+            try:
+                trainer.save_model()
+                logger.info(f"Model saved to {self.output_dir}")
+            except Exception as e:
+                error_msg = f"Failed to save model: {str(e)}"
+                logger.error(error_msg)
+                return False, error_msg
             
-            return True, f"Model successfully trained and saved to {self.output_dir}"
+            success_msg = f"Model successfully trained and saved to {self.output_dir}"
+            logger.info(success_msg)
+            return True, success_msg
             
         except Exception as e:
-            return False, f"Training failed: {str(e)}"
+            error_msg = f"Unexpected error during training: {str(e)}"
+            logger.error(error_msg)
+            # Log full traceback for debugging
+            import traceback
+            logger.error(f"Full traceback:\n{traceback.format_exc()}")
+            return False, error_msg
     
     def upload_model_to_hub(
         self, 
