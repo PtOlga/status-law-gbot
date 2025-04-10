@@ -1205,28 +1205,33 @@ with gr.Blocks(css="""
                 outputs=[qa_table]
             )
             
-            def on_table_select(evt: gr.SelectData) -> str:
-                """Handle table row selection"""
+            def on_table_select(evt: gr.SelectData, dataframe):
+                """Handle table row selection using the dataframe input"""
                 try:
-                    # Get the selected row index and column index
+                    # Get the selected row index
                     row_index = evt.index[0]
                     
-                    # Get the DataFrame from qa_table state
-                    df = qa_table.value
-                    
-                    # Return the full Conversation ID from the first column of selected row
-                    return df.iloc[row_index, 0]  # First column (0) contains Conversation ID
+                    # Access the dataframe passed as input parameter
+                    if dataframe is not None and len(dataframe) > row_index:
+                        # Get conversation ID from first column
+                        conversation_id = str(dataframe.iloc[row_index, 0])
+                        logger.info(f"Selected conversation ID: {conversation_id}")
+                        return conversation_id
+                    else:
+                        logger.error("DataFrame is empty or row index out of bounds")
+                        return ""
                 except Exception as e:
                     logger.error(f"Error in table selection: {str(e)}")
+                    import traceback
+                    logger.error(traceback.format_exc())
                     return ""
 
-            # Table row selection handler
+            # Update the table row selection handler to include the dataframe as input
             qa_table.select(
                 fn=on_table_select,
-                inputs=[],
+                inputs=[qa_table],  # Pass the table itself as input
                 outputs=[selected_conversation]
             )
-            
             # Load conversation for evaluation
             load_btn.click(
                 fn=lambda x: load_qa_pair_for_evaluation(conversation_id=x, evaluator=chat_evaluator),
