@@ -994,6 +994,9 @@ def initialize_chat_evaluator():
 # Initialize HF client with token at startup
 selected_model, saved_system_prompt = initialize_app()
 
+# Initialize evaluator before creating interface
+chat_evaluator = initialize_chat_evaluator()
+
 # Create interface
 with gr.Blocks(css="""
     .table-container {
@@ -1005,6 +1008,9 @@ with gr.Blocks(css="""
     def clear_conversation():
         """Clear conversation and save history before clearing"""
         return [], None  # Just return empty values
+    
+    # Create State for evaluator
+    evaluator_state = gr.State(value=chat_evaluator)
     
     with gr.Tabs():
         with gr.Tab("Chat"):
@@ -1397,7 +1403,7 @@ with gr.Blocks(css="""
             # Обработчик для удаления чата
             delete_btn.click(
                 fn=delete_conversation,
-                inputs=[selected_conversation, chat_evaluator],  # Используем созданный ранее объект chat_evaluator
+                inputs=[selected_conversation, evaluator_state],
                 outputs=[delete_status]
             )
 
