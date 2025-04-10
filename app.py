@@ -803,15 +803,15 @@ def save_system_prompt(prompt_text):
         return f"Error saving prompt: {str(e)}"    
     
     def delete_conversation_from_huggingface(conversation_id):
-    """
-    Delete conversation files from Hugging Face dataset by ID
-    
-    Args:
-        conversation_id: ID of conversation to delete
-    
-    Returns:
-        Success status (bool) and message (str)
-    """
+        """
+        Delete conversation files from Hugging Face dataset by ID
+
+        Args:
+            conversation_id: ID of conversation to delete
+
+        Returns:
+            Success status (bool) and message (str)
+        """
     try:
         from huggingface_hub import HfApi, hf_hub_download
         from huggingface_hub.utils import RepositoryNotFoundError, RevisionNotFoundError
@@ -879,16 +879,16 @@ def save_system_prompt(prompt_text):
     
     
     def delete_conversation(conversation_id, evaluator):
-    """
-    Delete conversation files by ID
-    
-    Args:
-        conversation_id: ID of conversation to delete
-        evaluator: ChatEvaluator instance
-    
-    Returns:
-        Message about deletion status
-    """
+        """
+        Delete conversation files by ID
+        
+        Args:
+            conversation_id: ID of conversation to delete
+            evaluator: ChatEvaluator instance
+        
+        Returns:
+            Message about deletion status
+        """
     try:
         if not conversation_id:
             return "Error: No conversation ID provided"
