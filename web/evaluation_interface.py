@@ -111,37 +111,38 @@ def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) 
     # Get all QA pairs
     qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=1000)
     
-    # Find the requested pair
-    for pair in qa_pairs:
-        if pair.get("conversation_id") == conversation_id:
-            question = pair.get("question", "")
-            original_answer = pair.get("original_answer", "")
-            
-            # Check if there's an existing annotation
-            annotation = evaluator.get_annotation_by_conversation_id(conversation_id)
-            
-            if annotation:
-                ratings = annotation.get("ratings", {})
-                improved_answer = annotation.get("improved_answer", original_answer)
-                notes = annotation.get("notes", "")
-                
-                # Get individual ratings with default value of 3
-                accuracy = ratings.get("accuracy", 3)
-                completeness = ratings.get("completeness", 3)
-                relevance = ratings.get("relevance", 3)
-                clarity = ratings.get("clarity", 3)
-                legal_correctness = ratings.get("legal_correctness", 3)
-                
-                return (question, original_answer, improved_answer, 
-                        accuracy, completeness, relevance, clarity, 
-                        legal_correctness, notes)
-            
-            # Return default values for new evaluation
-            return (question, original_answer, original_answer, 
-                    3, 3, 3, 3, 3, "")  # Default rating of 3 for all criteria
+    # Get existing annotation if any
+    annotation = evaluator.get_annotation(conversation_id)  # Changed from get_annotation_by_conversation_id
     
-    # Return empty values if conversation not found
-    return ("", "", "", 3, 3, 3, 3, 3, "")
+    if annotation:
+        return (
+            annotation.get("question", ""),
+            annotation.get("original_answer", ""),
+            annotation.get("improved_answer", ""),
+            annotation.get("ratings", {}).get("accuracy", 1),
+            annotation.get("ratings", {}).get("completeness", 1),
+            annotation.get("ratings", {}).get("relevance", 1),
+            annotation.get("ratings", {}).get("clarity", 1),
+            annotation.get("ratings", {}).get("legal_correctness", 1),
+            annotation.get("notes", "")
+        )
+    
+    # If no annotation exists, find the conversation in QA pairs
+    for qa_pair in qa_pairs:
+        if qa_pair.get("conversation_id") == conversation_id:
+            return (
+                qa_pair.get("question", ""),
+                qa_pair.get("answer", ""),
+                "",  # Empty improved answer
+                1,   # Default ratings
+                1,
+                1,
+                1,
+                1,
+                ""   # Empty notes
+            )
+            
+    return "", "", "", 1, 1, 1, 1, 1, ""  # Return empty values if not found
 
 def save_evaluation(
     conversation_id: str,
