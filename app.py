@@ -1375,7 +1375,7 @@ with gr.Blocks(css="""
             
             # Export training data
             export_btn.click(
-                fn=lambda min_r, path: export_training_data_action(min_r, path, chat_evaluator),
+                fn=lambda min_r, path: export_training_data_action(chat_evaluator, min_r, path),
                 inputs=[min_rating, export_path],
                 outputs=[export_status]
             )

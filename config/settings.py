@@ -29,6 +29,9 @@ DATASET_FINE_TUNED_PATH = "fine_tuned_models"
 DATASET_ANNOTATIONS_PATH = "annotations"
 DATASET_ERROR_LOGS_PATH = "error_logs"
 DATASET_PREFERENCES_PATH = "preferences/user_preferences.json"
+# Adding training data paths
+DATASET_TRAINING_DATA_PATH = "training_data"
+DATASET_TRAINING_LOGS_PATH = "training_logs"
 
 # Temporary storage (using system temp directory)
 TEMP_DIR = tempfile.gettempdir()
