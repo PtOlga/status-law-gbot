@@ -12,20 +12,6 @@ import gradio as gr
 import pandas as pd  # Add this import
 
 
-# Debug imports
-import pkg_resources
-print("Installed packages:")
-for pkg in pkg_resources.working_set:
-    print(pkg.project_name, pkg.version)
-
-try:
-    import huggingface_hub
-    print("huggingface_hub version:", huggingface_hub.__version__)
-    print("Available modules:", dir(huggingface_hub))
-except ImportError:
-    print("huggingface_hub is not installed")
-    
-
 from huggingface_hub import HfApi, InferenceClient 
 from langdetect import detect, LangDetectException
 import langdetect
@@ -876,7 +862,12 @@ def initialize_chat_evaluator():
 selected_model, saved_system_prompt = initialize_app()
 
 # Create interface
-with gr.Blocks() as demo:
+with gr.Blocks(css="""
+    .table-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    """) as demo:
     # Define clear_conversation function within the block for component access
     def clear_conversation():
         """Clear conversation and save history before clearing"""
@@ -1146,7 +1137,7 @@ with gr.Blocks() as demo:
                         pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]),
                         interactive=True,
                         wrap=True,
-                        height=400  # Added explicit height
+                        elem_classes="table-container"
                     )
                     
                     # Conversation selection section
