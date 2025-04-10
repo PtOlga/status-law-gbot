@@ -1205,14 +1205,17 @@ with gr.Blocks(css="""
                 outputs=[qa_table]
             )
             
-            # Обработчик выбора строки в таблице
             def on_table_select(evt: gr.SelectData) -> str:
                 """Handle table row selection"""
                 try:
-                    # Get the full row data
-                    row_data = evt.data
-                    # Return the full Conversation ID from the first column
-                    return row_data[0]
+                    # Get the selected row index and column index
+                    row_index = evt.index[0]
+                    
+                    # Get the DataFrame from qa_table state
+                    df = qa_table.value
+                    
+                    # Return the full Conversation ID from the first column of selected row
+                    return df.iloc[row_index, 0]  # First column (0) contains Conversation ID
                 except Exception as e:
                     logger.error(f"Error in table selection: {str(e)}")
                     return ""
