@@ -35,6 +35,7 @@ from config.settings import (
     DATASET_ID,
     DATASET_PREFERENCES_PATH,
     DATASET_VECTOR_STORE_PATH,
+    DATASET_ANNOTATIONS_PATH,  # Добавляем импорт
     DEFAULT_MODEL,
     EMBEDDING_MODEL,
     HF_TOKEN,
@@ -974,14 +975,12 @@ def initialize_chat_evaluator():
     try:
         evaluator = ChatEvaluator(
             hf_token=HF_TOKEN,
-            dataset_id=DATASET_ID,
-            #chat_history_path=DATASET_CHAT_HISTORY_PATH,
-            annotations_dir=os.path.join(DATASET_CHAT_HISTORY_PATH, 'evaluations')
+            dataset_id=DATASET_ID
         )
         
         # Проверим наличие директорий
         os.makedirs(DATASET_CHAT_HISTORY_PATH, exist_ok=True)
-        os.makedirs(os.path.join(DATASET_CHAT_HISTORY_PATH, 'evaluations'), exist_ok=True)
+        os.makedirs(os.path.join(DATASET_ANNOTATIONS_PATH), exist_ok=True)
         
         logger.debug(f"Chat history path: {DATASET_CHAT_HISTORY_PATH}")
         logger.debug(f"Number of chat files: {len(os.listdir(DATASET_CHAT_HISTORY_PATH))}")
