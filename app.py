@@ -802,16 +802,16 @@ def save_system_prompt(prompt_text):
         logger.error(f"Error saving system prompt: {str(e)}")
         return f"Error saving prompt: {str(e)}"    
     
-    def delete_conversation_from_huggingface(conversation_id):
-        """
-        Delete conversation files from Hugging Face dataset by ID
+def delete_conversation_from_huggingface(conversation_id):
+    """
+    Delete conversation files from Hugging Face dataset by ID
 
-        Args:
-            conversation_id: ID of conversation to delete
+    Args:
+        conversation_id: ID of conversation to delete
 
-        Returns:
-            Success status (bool) and message (str)
-        """
+    Returns:
+        Success status (bool) and message (str)
+    """
     try:
         from huggingface_hub import HfApi, hf_hub_download
         from huggingface_hub.utils import RepositoryNotFoundError, RevisionNotFoundError
@@ -878,17 +878,17 @@ def save_system_prompt(prompt_text):
         return False, f"Error deleting conversation from dataset: {str(e)}"
     
     
-    def delete_conversation(conversation_id, evaluator):
-        """
-        Delete conversation files by ID
+def delete_conversation(conversation_id, evaluator):
+    """
+    Delete conversation files by ID
         
-        Args:
-            conversation_id: ID of conversation to delete
-            evaluator: ChatEvaluator instance
+    Args:
+        conversation_id: ID of conversation to delete
+        evaluator: ChatEvaluator instance
         
-        Returns:
-            Message about deletion status
-        """
+    Returns:
+        Message about deletion status
+    """
     try:
         if not conversation_id:
             return "Error: No conversation ID provided"
@@ -933,12 +933,8 @@ def save_system_prompt(prompt_text):
         return f"Deleted {deleted_count} chat file(s) for conversation: {conversation_id}"
     except Exception as e:
         logger.error(f"Error deleting conversation: {str(e)}")
-        return f"Error deleting conversation: {str(e)}"
+        return f"Error deleting conversation: {str(e)}" 
     
-    
-    
-    
-
 def initialize_app():
     """Initialize app with user preferences"""
     global client, ACTIVE_MODEL
