@@ -1143,7 +1143,7 @@ with gr.Blocks(css="""
                         ),
                         interactive=True,
                         wrap=True,
-                        height=400,
+                        row_count=15,  # Changed from height to row_count
                         show_label=True
                     )
                     
