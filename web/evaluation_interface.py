@@ -56,23 +56,24 @@ def get_qa_pairs_dataframe(evaluator, show_evaluated=False, force_reload=False):
     
     Args:
         evaluator: ChatEvaluator instance
-        show_evaluated: If True, include already evaluated pairs
+        show_evaluated: If True, show only evaluated pairs. If False, show all pairs
         force_reload: If True, force reload from dataset
         
     Returns:
         DataFrame with QA pairs
     """
     try:
-        # Get QA pairs with potential force reload
+        # Get QA pairs
         qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=100, force_reload=force_reload)
         
         # Get annotations
         annotations = evaluator.get_annotations(force_reload=force_reload)
         evaluated_ids = {a.get("conversation_id") for a in annotations}
         
-        # Filter out already evaluated pairs if needed
-        if not show_evaluated:
-            qa_pairs = [qa for qa in qa_pairs if qa["conversation_id"] not in evaluated_ids]
+        # Filter pairs based on show_evaluated flag
+        if show_evaluated:
+            # Show only evaluated pairs
+            qa_pairs = [qa for qa in qa_pairs if qa["conversation_id"] in evaluated_ids]
         
         # Convert to DataFrame
         if qa_pairs:
@@ -91,6 +92,7 @@ def get_qa_pairs_dataframe(evaluator, show_evaluated=False, force_reload=False):
         else:
             import pandas as pd
             return pd.DataFrame(columns=["Conversation ID", "Question", "Answer", "Evaluated"])
+            
     except Exception as e:
         logger.error(f"Error getting QA pairs dataframe: {e}")
         import pandas as pd

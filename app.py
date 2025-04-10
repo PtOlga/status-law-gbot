@@ -1247,7 +1247,7 @@ with gr.Blocks(css="""
                     
                     # QA pairs table section
                     show_evaluated = gr.Checkbox(
-                        label="Show Already Evaluated Pairs",
+                        label="Show Only Evaluated Pairs",
                         value=False
                     )
                     qa_table = gr.Dataframe(
