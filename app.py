@@ -882,56 +882,29 @@ def delete_conversation_from_huggingface(conversation_id):
 def delete_conversation(conversation_id, evaluator):
     """
     Delete conversation files by ID
-        
+    
     Args:
         conversation_id: ID of conversation to delete
         evaluator: ChatEvaluator instance
-        
+    
     Returns:
         Message about deletion status
     """
     try:
         if not conversation_id:
             return "Error: No conversation ID provided"
-            
-        # Get all chat files
-        chat_files = evaluator.get_chat_files()
+
+        # Используем HF API напрямую для удаления
+        success, message = delete_conversation_from_huggingface(conversation_id)
         
-        # Find matching files (there might be multiple files with same conversation ID)
-        matching_files = []
-        for chat_file in chat_files:
-            filename = os.path.basename(chat_file)
-            if filename.startswith(f"{conversation_id}_"):
-                matching_files.append(chat_file)
-                
-        if not matching_files:
-            return f"No files found for conversation ID: {conversation_id}"
+        if not success:
+            return f"Error deleting conversation: {message}"
             
-        # Delete all matching files
-        deleted_count = 0
-        for file_path in matching_files:
-            try:
-                os.remove(file_path)
-                deleted_count += 1
-                logger.info(f"Deleted chat file: {file_path}")
-            except Exception as e:
-                logger.error(f"Error deleting file {file_path}: {str(e)}")
-                
-        # Check if there are evaluation files for this conversation
-        evaluation_path = os.path.join(
-            evaluator.annotations_dir, 
-            f"evaluation_{conversation_id}.json"
-        )
+        # Сбрасываем кэш evaluator'а после удаления
+        evaluator.reset_cache()
         
-        if os.path.exists(evaluation_path):
-            try:
-                os.remove(evaluation_path)
-                logger.info(f"Deleted evaluation file: {evaluation_path}")
-                return f"Deleted {deleted_count} chat file(s) and evaluation for conversation: {conversation_id}"
-            except Exception as e:
-                logger.error(f"Error deleting evaluation file {evaluation_path}: {str(e)}")
-                
-        return f"Deleted {deleted_count} chat file(s) for conversation: {conversation_id}"
+        return f"Successfully deleted conversation: {conversation_id}"
+        
     except Exception as e:
         logger.error(f"Error deleting conversation: {str(e)}")
         return f"Error deleting conversation: {str(e)}" 
