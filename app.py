@@ -856,13 +856,7 @@ def delete_conversation_from_huggingface(conversation_id):
             # Учитываем разные варианты пути к аннотациям
             annotations_base = os.path.basename(DATASET_ANNOTATIONS_PATH)
             annotation_paths = [
-                f"{annotations_base}/annotation_{conversation_id}.json",
-                f"{annotations_base}/evaluation_{conversation_id}.json",
-                f"annotations/annotation_{conversation_id}.json",
-                f"annotations/evaluation_{conversation_id}.json",
-                f"evaluations/annotation_{conversation_id}.json",
-                f"evaluations/evaluation_{conversation_id}.json",
-                f"{chat_dir}/evaluations/evaluation_{conversation_id}.json"
+                f"{annotations_base}/annotation_{conversation_id}.json"
             ]
             
             for annotation_path in annotation_paths:
