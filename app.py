@@ -10,6 +10,22 @@ import os
 # Third-party imports
 import gradio as gr
 import pandas as pd  # Add this import
+
+
+# Debug imports
+import pkg_resources
+print("Installed packages:")
+for pkg in pkg_resources.working_set:
+    print(pkg.project_name, pkg.version)
+
+try:
+    import huggingface_hub
+    print("huggingface_hub version:", huggingface_hub.__version__)
+    print("Available modules:", dir(huggingface_hub))
+except ImportError:
+    print("huggingface_hub is not installed")
+    
+
 from huggingface_hub import HfApi, InferenceClient 
 from langdetect import detect, LangDetectException
 import langdetect
