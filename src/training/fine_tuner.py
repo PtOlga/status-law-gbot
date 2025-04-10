@@ -276,35 +276,35 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
     
     def train(
         self,
-        training_data_path: Optional[str] = None,
+        training_data_path: str,
         num_train_epochs: int = 3,
         per_device_train_batch_size: int = 4,
-        gradient_accumulation_steps: int = 4,
+        gradient_accumulation_steps: int = 8,
         learning_rate: float = 2e-4,
         logging_steps: int = 10,
         save_strategy: str = "epoch"
     ) -> Tuple[bool, str]:
         """
-        Start model fine-tuning process
+        Train the model using provided data
+    
+        Args:
+            training_data_path: Path to training data file
+            num_train_epochs: Number of training epochs
+            per_device_train_batch_size: Batch size per device
+            gradient_accumulation_steps: Number of steps to accumulate gradients
+            learning_rate: Learning rate
+            logging_steps: Number of steps between logging
+            save_strategy: When to save checkpoints
+        
+        Returns:
+            (success, message)
         """
         try:
-            # Prepare training data if path not specified
-            if training_data_path is None:
-                training_data_path = self.prepare_training_data()
-                temp_data = True
-            else:
-                temp_data = False
-            
-            # Load model and tokenizer if not loaded
-            if self.model is None or self.tokenizer is None:
-                self.load_model_and_tokenizer()
-            
             # Prepare model for training
             self.prepare_model_for_training()
             
             # Load dataset
-            dataset = load_dataset("json", data_files=training_data_path, split="train")
-            logger.info(f"Loaded {len(dataset)} examples from {training_data_path}")
+            dataset = load_dataset('json', data_files=training_data_path)['train']
             
             # Tokenize dataset
             tokenized_dataset = self.tokenize_dataset(dataset)
@@ -343,22 +343,15 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
             )
             
             # Start training
-            logger.info("Starting model training...")
             trainer.train()
             
             # Save model
-            logger.info(f"Saving trained model to {self.output_dir}")
-            trainer.save_model(self.output_dir)
-            self.tokenizer.save_pretrained(self.output_dir)
-            
-            # Remove temporary file if created
-            if temp_data and os.path.exists(training_data_path):
-                os.remove(training_data_path)
+            trainer.save_model()
             
             return True, f"Model successfully trained and saved to {self.output_dir}"
+            
         except Exception as e:
-            logger.error(f"Error during training: {str(e)}")
-            return False, f"Error during training: {str(e)}"
+            return False, f"Training failed: {str(e)}"
     
     def upload_model_to_hub(
         self, 
