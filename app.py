@@ -801,6 +801,143 @@ def save_system_prompt(prompt_text):
     except Exception as e:
         logger.error(f"Error saving system prompt: {str(e)}")
         return f"Error saving prompt: {str(e)}"    
+    
+    def delete_conversation_from_huggingface(conversation_id):
+    """
+    Delete conversation files from Hugging Face dataset by ID
+    
+    Args:
+        conversation_id: ID of conversation to delete
+    
+    Returns:
+        Success status (bool) and message (str)
+    """
+    try:
+        from huggingface_hub import HfApi, hf_hub_download
+        from huggingface_hub.utils import RepositoryNotFoundError, RevisionNotFoundError
+        
+        if not conversation_id:
+            return False, "No conversation ID provided"
+            
+        # Initialize API
+        api = HfApi(token=HF_TOKEN)
+        
+        # Get list of files in dataset 
+        try:
+            # Extract just the directory name from DATASET_CHAT_HISTORY_PATH
+            dir_name = os.path.basename(DATASET_CHAT_HISTORY_PATH)
+            
+            # Get all files in chat history directory
+            files_info = api.list_repo_files(
+                repo_id=DATASET_ID,
+                repo_type="dataset",
+                path=dir_name
+            )
+            
+            # Find files with matching conversation ID
+            matching_files = [
+                file for file in files_info 
+                if f"{conversation_id}_" in os.path.basename(file)
+            ]
+            
+            if not matching_files:
+                return False, f"No files found in dataset for conversation ID: {conversation_id}"
+                
+            # Delete each matching file
+            for file_path in matching_files:
+                try:
+                    api.delete_file(
+                        repo_id=DATASET_ID,
+                        repo_type="dataset",
+                        path_in_repo=file_path
+                    )
+                    logger.info(f"Deleted file from HF dataset: {file_path}")
+                except Exception as e:
+                    logger.error(f"Error deleting file {file_path} from dataset: {str(e)}")
+            
+            # Try to delete evaluation file if it exists
+            evaluation_path = f"{dir_name}/evaluations/evaluation_{conversation_id}.json"
+            try:
+                api.delete_file(
+                    repo_id=DATASET_ID,
+                    repo_type="dataset",
+                    path_in_repo=evaluation_path
+                )
+                logger.info(f"Deleted evaluation file from HF dataset: {evaluation_path}")
+            except Exception as e:
+                # It's okay if evaluation file doesn't exist
+                logger.debug(f"Could not delete evaluation file {evaluation_path}: {str(e)}")
+                
+            return True, f"Deleted {len(matching_files)} file(s) from dataset for conversation: {conversation_id}"
+            
+        except (RepositoryNotFoundError, RevisionNotFoundError) as e:
+            return False, f"Dataset or path not found: {str(e)}"
+            
+    except Exception as e:
+        logger.error(f"Error deleting conversation from dataset: {str(e)}")
+        return False, f"Error deleting conversation from dataset: {str(e)}"
+    
+    
+    def delete_conversation(conversation_id, evaluator):
+    """
+    Delete conversation files by ID
+    
+    Args:
+        conversation_id: ID of conversation to delete
+        evaluator: ChatEvaluator instance
+    
+    Returns:
+        Message about deletion status
+    """
+    try:
+        if not conversation_id:
+            return "Error: No conversation ID provided"
+            
+        # Get all chat files
+        chat_files = evaluator.get_chat_files()
+        
+        # Find matching files (there might be multiple files with same conversation ID)
+        matching_files = []
+        for chat_file in chat_files:
+            filename = os.path.basename(chat_file)
+            if filename.startswith(f"{conversation_id}_"):
+                matching_files.append(chat_file)
+                
+        if not matching_files:
+            return f"No files found for conversation ID: {conversation_id}"
+            
+        # Delete all matching files
+        deleted_count = 0
+        for file_path in matching_files:
+            try:
+                os.remove(file_path)
+                deleted_count += 1
+                logger.info(f"Deleted chat file: {file_path}")
+            except Exception as e:
+                logger.error(f"Error deleting file {file_path}: {str(e)}")
+                
+        # Check if there are evaluation files for this conversation
+        evaluation_path = os.path.join(
+            evaluator.annotations_dir, 
+            f"evaluation_{conversation_id}.json"
+        )
+        
+        if os.path.exists(evaluation_path):
+            try:
+                os.remove(evaluation_path)
+                logger.info(f"Deleted evaluation file: {evaluation_path}")
+                return f"Deleted {deleted_count} chat file(s) and evaluation for conversation: {conversation_id}"
+            except Exception as e:
+                logger.error(f"Error deleting evaluation file {evaluation_path}: {str(e)}")
+                
+        return f"Deleted {deleted_count} chat file(s) for conversation: {conversation_id}"
+    except Exception as e:
+        logger.error(f"Error deleting conversation: {str(e)}")
+        return f"Error deleting conversation: {str(e)}"
+    
+    
+    
+    
 
 def initialize_app():
     """Initialize app with user preferences"""
@@ -1139,7 +1276,7 @@ with gr.Blocks(css="""
                     )
                     qa_table = gr.Dataframe(
                         value=pd.DataFrame(
-                            columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]
+                            columns=["Conversation ID", "Question", "Answer", "Evaluated"]
                         ),
                         interactive=True,
                         wrap=True,
@@ -1156,6 +1293,9 @@ with gr.Blocks(css="""
                             interactive=True
                         )
                         load_btn = gr.Button("Load Conversation")
+                        delete_btn = gr.Button("Delete Conversation", variant="stop")
+                        
+                        delete_status = gr.Textbox(label="Delete Status", interactive=False)
                     
                     # Conversation content section
                     gr.Markdown("### Evaluate Response")
@@ -1256,6 +1396,20 @@ with gr.Blocks(css="""
                 fn=lambda min_r, path: export_training_data_action(min_r, path, chat_evaluator),
                 inputs=[min_rating, export_path],
                 outputs=[export_status]
+            )
+            
+            # Обработчик для удаления чата
+            delete_btn.click(
+                fn=delete_conversation,
+                inputs=[selected_conversation, chat_evaluator],  # Используем созданный ранее объект chat_evaluator
+                outputs=[delete_status]
+            )
+
+            # Обновление таблицы и статуса после удаления
+            delete_btn.click(
+                fn=lambda: get_evaluation_status(chat_evaluator, force_reload=True),
+                inputs=[],
+                outputs=[evaluation_status, qa_table, refresh_data_status]
             )
     
     # Model change handler - outside of Tabs but inside Blocks
