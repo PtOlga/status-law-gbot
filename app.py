@@ -814,9 +814,6 @@ def delete_conversation_from_huggingface(conversation_id):
         Success status (bool) and message (str)
     """
     try:
-        from huggingface_hub import HfApi, hf_hub_download
-        from huggingface_hub.utils import RepositoryNotFoundError, RevisionNotFoundError
-        
         if not conversation_id:
             return False, "No conversation ID provided"
             
@@ -826,16 +823,16 @@ def delete_conversation_from_huggingface(conversation_id):
         # Get list of files in dataset 
         try:
             # Get all files in dataset
-            files_info = api.list_repo_files(
+            files = api.list_files_info(
                 repo_id=DATASET_ID,
                 repo_type="dataset"
             )
             
             # Find files with matching conversation ID in chat history
             chat_files = [
-                file for file in files_info 
-                if file.startswith(f"{DATASET_CHAT_HISTORY_PATH}/") and 
-                f"{conversation_id}_" in os.path.basename(file)
+                file.rfilename for file in files 
+                if file.rfilename.startswith(f"{DATASET_CHAT_HISTORY_PATH}/") and 
+                f"{conversation_id}_" in os.path.basename(file.rfilename)
             ]
             
             if not chat_files:
@@ -868,8 +865,8 @@ def delete_conversation_from_huggingface(conversation_id):
                 
             return True, f"Deleted {len(chat_files)} file(s) from dataset for conversation: {conversation_id}"
             
-        except (RepositoryNotFoundError, RevisionNotFoundError) as e:
-            return False, f"Dataset or path not found: {str(e)}"
+        except Exception as e:
+            return False, f"Dataset access error: {str(e)}"
             
     except Exception as e:
         logger.error(f"Error deleting conversation from dataset: {str(e)}")
