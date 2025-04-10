@@ -1,0 +1,182 @@
+2025-04-08 23:40:07,659 - __main__ - INFO - ==================
+2025-04-08 23:48:34,665 - __main__ - INFO - === CONFIGURATION ===
+2025-04-08 23:48:34,665 - __main__ - INFO - Chat history path: ./chat_history
+2025-04-08 23:48:34,665 - __main__ - INFO - Dataset ID: Rulga/status-law-knowledge-base
+2025-04-08 23:48:34,665 - __main__ - INFO - Test mode: No
+2025-04-08 23:48:34,665 - __main__ - INFO - Local only: No
+2025-04-08 23:48:34,665 - __main__ - INFO - ==================
+2025-04-08 23:48:34,665 - __main__ - INFO - Found 0 files with 'None_' prefix in ./chat_history
+2025-04-08 23:48:34,665 - __main__ - INFO - Repair completed: 0 files repaired, 0 skipped, 0 errors
+2025-04-08 23:48:34,665 - __main__ - INFO - Successfully repaired 0 files
+2025-04-08 23:58:37,736 - __main__ - INFO - === CONFIGURATION ===
+2025-04-08 23:58:37,736 - __main__ - INFO - Chat history path: ./chat_history
+2025-04-08 23:58:37,736 - __main__ - INFO - Dataset ID: Rulga/status-law-knowledge-base
+2025-04-08 23:58:37,736 - __main__ - INFO - Test mode: No
+2025-04-08 23:58:37,736 - __main__ - INFO - Local only: No
+2025-04-08 23:58:37,736 - __main__ - INFO - ==================
+2025-04-08 23:58:37,736 - __main__ - ERROR - Error accessing dataset: HfApi.list_repo_files() got an unexpected keyword argument 'path'
+2025-04-08 23:58:37,736 - __main__ - INFO - Successfully repaired 0 files
+2025-04-08 23:59:57,181 - __main__ - INFO - === CONFIGURATION ===
+2025-04-08 23:59:57,186 - __main__ - INFO - Chat history path: ./chat_history
+2025-04-08 23:59:57,186 - __main__ - INFO - Dataset ID: Rulga/status-law-knowledge-base
+2025-04-08 23:59:57,186 - __main__ - INFO - Test mode: No
+2025-04-08 23:59:57,186 - __main__ - INFO - Local only: No
+2025-04-08 23:59:57,187 - __main__ - INFO - ==================
+2025-04-08 23:59:58,278 - __main__ - INFO - Found 54 files with 'None_' prefix in dataset
+2025-04-09 00:00:04,290 - __main__ - INFO - Repaired: None_20250403-003446.json -> 20250403-003446.json (archived as archive/None_20250409_000000_None_20250403-003446.json) - New ID: conv_20250403003446_20250403-0
+2025-04-09 00:00:05,006 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:07,138 - __main__ - INFO - Repaired: None_20250403-004332.json -> 20250403-004332.json (archived as archive/None_20250409_000004_None_20250403-004332.json) - New ID: conv_20250403004332_20250403-0
+2025-04-09 00:00:07,781 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:09,995 - __main__ - INFO - Repaired: None_20250403-005218.json -> 20250403-005218.json (archived as archive/None_20250409_000007_None_20250403-005218.json) - New ID: conv_20250403005218_20250403-0
+2025-04-09 00:00:10,659 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:13,307 - __main__ - INFO - Repaired: None_20250403-005243.json -> 20250403-005243.json (archived as archive/None_20250409_000010_None_20250403-005243.json) - New ID: conv_20250403005243_20250403-0
+2025-04-09 00:00:13,974 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:16,190 - __main__ - INFO - Repaired: None_20250403-005335.json -> 20250403-005335.json (archived as archive/None_20250409_000013_None_20250403-005335.json) - New ID: conv_20250403005335_20250403-0
+2025-04-09 00:00:17,200 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:19,427 - __main__ - INFO - Repaired: None_20250403-115212.json -> 20250403-115212.json (archived as archive/None_20250409_000016_None_20250403-115212.json) - New ID: conv_20250403115212_20250403-1
+2025-04-09 00:00:20,074 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:22,569 - __main__ - INFO - Repaired: None_20250403-154557.json -> 20250403-154557.json (archived as archive/None_20250409_000019_None_20250403-154557.json) - New ID: conv_20250403154557_20250403-1
+2025-04-09 00:00:23,336 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:26,146 - __main__ - INFO - Repaired: None_20250403-170727.json -> 20250403-170727.json (archived as archive/None_20250409_000023_None_20250403-170727.json) - New ID: conv_20250403170727_20250403-1
+2025-04-09 00:00:26,935 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:29,465 - __main__ - INFO - Repaired: None_20250403-171345.json -> 20250403-171345.json (archived as archive/None_20250409_000026_None_20250403-171345.json) - New ID: conv_20250403171345_20250403-1
+2025-04-09 00:00:30,637 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:34,875 - __main__ - INFO - Repaired: None_20250403-180146.json -> 20250403-180146.json (archived as archive/None_20250409_000030_None_20250403-180146.json) - New ID: conv_20250403180146_20250403-1
+2025-04-09 00:00:35,815 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:39,596 - __main__ - INFO - Repaired: None_20250403-181618.json -> 20250403-181618.json (archived as archive/None_20250409_000035_None_20250403-181618.json) - New ID: conv_20250403181618_20250403-1
+2025-04-09 00:00:40,360 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:42,616 - __main__ - INFO - Repaired: None_20250403-182229.json -> 20250403-182229.json (archived as archive/None_20250409_000040_None_20250403-182229.json) - New ID: conv_20250403182229_20250403-1
+2025-04-09 00:00:44,078 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:46,335 - __main__ - INFO - Repaired: None_20250404-131413.json -> 20250404-131413.json (archived as archive/None_20250409_000043_None_20250404-131413.json) - New ID: conv_20250404131413_20250404-1
+2025-04-09 00:00:47,294 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:49,765 - __main__ - INFO - Repaired: None_20250404-131503.json -> 20250404-131503.json (archived as archive/None_20250409_000046_None_20250404-131503.json) - New ID: conv_20250404131503_20250404-1
+2025-04-09 00:00:50,496 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:52,495 - __main__ - INFO - Repaired: None_20250404-134635.json -> 20250404-134635.json (archived as archive/None_20250409_000050_None_20250404-134635.json) - New ID: conv_20250404134635_20250404-1
+2025-04-09 00:00:53,125 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:55,215 - __main__ - INFO - Repaired: None_20250404-140648.json -> 20250404-140648.json (archived as archive/None_20250409_000052_None_20250404-140648.json) - New ID: conv_20250404140648_20250404-1
+2025-04-09 00:00:55,825 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:00:57,976 - __main__ - INFO - Repaired: None_20250404-140914.json -> 20250404-140914.json (archived as archive/None_20250409_000055_None_20250404-140914.json) - New ID: conv_20250404140914_20250404-1
+2025-04-09 00:00:58,735 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:00,779 - __main__ - INFO - Repaired: None_20250404-140955.json -> 20250404-140955.json (archived as archive/None_20250409_000058_None_20250404-140955.json) - New ID: conv_20250404140955_20250404-1
+2025-04-09 00:01:01,448 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:03,863 - __main__ - INFO - Repaired: None_20250404-175337.json -> 20250404-175337.json (archived as archive/None_20250409_000101_None_20250404-175337.json) - New ID: conv_20250404175337_20250404-1
+2025-04-09 00:01:05,144 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:07,415 - __main__ - INFO - Repaired: None_20250404-180019.json -> 20250404-180019.json (archived as archive/None_20250409_000104_None_20250404-180019.json) - New ID: conv_20250404180019_20250404-1
+2025-04-09 00:01:08,666 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:11,586 - __main__ - INFO - Repaired: None_20250404-180053.json -> 20250404-180053.json (archived as archive/None_20250409_000108_None_20250404-180053.json) - New ID: conv_20250404180053_20250404-1
+2025-04-09 00:01:12,179 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:15,196 - __main__ - INFO - Repaired: None_20250404-180123.json -> 20250404-180123.json (archived as archive/None_20250409_000111_None_20250404-180123.json) - New ID: conv_20250404180123_20250404-1
+2025-04-09 00:01:15,966 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:20,105 - __main__ - INFO - Repaired: None_20250404-180651.json -> 20250404-180651.json (archived as archive/None_20250409_000115_None_20250404-180651.json) - New ID: conv_20250404180651_20250404-1
+2025-04-09 00:01:20,922 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:23,705 - __main__ - INFO - Repaired: None_20250404-180725.json -> 20250404-180725.json (archived as archive/None_20250409_000120_None_20250404-180725.json) - New ID: conv_20250404180725_20250404-1
+2025-04-09 00:01:24,605 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:27,163 - __main__ - INFO - Repaired: None_20250404-180940.json -> 20250404-180940.json (archived as archive/None_20250409_000124_None_20250404-180940.json) - New ID: conv_20250404180940_20250404-1
+2025-04-09 00:01:29,246 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:31,812 - __main__ - INFO - Repaired: None_20250404-181628.json -> 20250404-181628.json (archived as archive/None_20250409_000129_None_20250404-181628.json) - New ID: conv_20250404181628_20250404-1
+2025-04-09 00:01:32,711 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:36,233 - __main__ - INFO - Repaired: None_20250404-181730.json -> 20250404-181730.json (archived as archive/None_20250409_000132_None_20250404-181730.json) - New ID: conv_20250404181730_20250404-1
+2025-04-09 00:01:37,193 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:39,716 - __main__ - INFO - Repaired: None_20250404-184103.json -> 20250404-184103.json (archived as archive/None_20250409_000136_None_20250404-184103.json) - New ID: conv_20250404184103_20250404-1
+2025-04-09 00:01:40,429 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:43,604 - __main__ - INFO - Repaired: None_20250404-184613.json -> 20250404-184613.json (archived as archive/None_20250409_000140_None_20250404-184613.json) - New ID: conv_20250404184613_20250404-1
+2025-04-09 00:01:44,255 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:47,350 - __main__ - INFO - Repaired: None_20250404-184705.json -> 20250404-184705.json (archived as archive/None_20250409_000144_None_20250404-184705.json) - New ID: conv_20250404184705_20250404-1
+2025-04-09 00:01:47,984 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:01:57,394 - __main__ - INFO - Repaired: None_20250404-185243.json -> 20250404-185243.json (archived as archive/None_20250409_000147_None_20250404-185243.json) - New ID: conv_20250404185243_20250404-1
+2025-04-09 00:01:58,585 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:16,266 - __main__ - INFO - Repaired: None_20250404-185810.json -> 20250404-185810.json (archived as archive/None_20250409_000158_None_20250404-185810.json) - New ID: conv_20250404185810_20250404-1
+2025-04-09 00:02:16,955 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:21,675 - __main__ - INFO - Repaired: None_20250404-202051.json -> 20250404-202051.json (archived as archive/None_20250409_000216_None_20250404-202051.json) - New ID: conv_20250404202051_20250404-2
+2025-04-09 00:02:22,334 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:26,166 - __main__ - INFO - Repaired: None_20250407-174318.json -> 20250407-174318.json (archived as archive/None_20250409_000222_None_20250407-174318.json) - New ID: conv_20250407174318_20250407-1
+2025-04-09 00:02:26,829 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:30,186 - __main__ - INFO - Repaired: None_20250407-175851.json -> 20250407-175851.json (archived as archive/None_20250409_000226_None_20250407-175851.json) - New ID: conv_20250407175851_20250407-1
+2025-04-09 00:02:30,878 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:34,506 - __main__ - INFO - Repaired: None_20250408-135920.json -> 20250408-135920.json (archived as archive/None_20250409_000230_None_20250408-135920.json) - New ID: conv_20250408135920_20250408-1
+2025-04-09 00:02:35,226 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:38,338 - __main__ - INFO - Repaired: None_20250408-143211.json -> 20250408-143211.json (archived as archive/None_20250409_000234_None_20250408-143211.json) - New ID: conv_20250408143211_20250408-1
+2025-04-09 00:02:38,937 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:41,520 - __main__ - INFO - Repaired: None_20250408-152804.json -> 20250408-152804.json (archived as archive/None_20250409_000238_None_20250408-152804.json) - New ID: conv_20250408152804_20250408-1
+2025-04-09 00:02:42,156 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:44,487 - __main__ - INFO - Repaired: None_20250408-161228.json -> 20250408-161228.json (archived as archive/None_20250409_000241_None_20250408-161228.json) - New ID: conv_20250408161228_20250408-1
+2025-04-09 00:02:45,146 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:47,666 - __main__ - INFO - Repaired: None_20250408-165140.json -> 20250408-165140.json (archived as archive/None_20250409_000244_None_20250408-165140.json) - New ID: conv_20250408165140_20250408-1
+2025-04-09 00:02:48,358 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:50,936 - __main__ - INFO - Repaired: None_20250408-165215.json -> 20250408-165215.json (archived as archive/None_20250409_000248_None_20250408-165215.json) - New ID: conv_20250408165215_20250408-1
+2025-04-09 00:02:51,768 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:54,381 - __main__ - INFO - Repaired: None_20250408-165308.json -> 20250408-165308.json (archived as archive/None_20250409_000251_None_20250408-165308.json) - New ID: conv_20250408165308_20250408-1
+2025-04-09 00:02:55,249 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:56,626 - __main__ - ERROR - Error processing chat_history/None_20250408-165439.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d0e-3aa06dce36a9407f6e3c4bc8;0019f945-c6e5-4f53-9177-185f7e813af8)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:02:57,206 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:57,800 - __main__ - ERROR - Error processing chat_history/None_20250408-165706.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d0f-59323183245f43793c756098;ba4091db-b602-48f9-a14e-c20b2e7574e0)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:02:58,375 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:02:59,035 - __main__ - ERROR - Error processing chat_history/None_20250408-170353.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d10-2d5693ed479b4b090f5c7581;fc9b6a57-6774-46bd-81eb-221706734b1d)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:02:59,846 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:00,892 - __main__ - ERROR - Error processing chat_history/None_20250408-170621.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d12-27add14c41b10a8312a23491;4869be22-ff56-4df3-96e5-46e06e9298e6)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:02,025 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:02,946 - __main__ - ERROR - Error processing chat_history/None_20250408-171613.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d14-79025b8858c271d03de46570;d25ad960-bcdc-4e63-95e0-bd9bd0926652)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:04,632 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:05,370 - __main__ - ERROR - Error processing chat_history/None_20250408-172112.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d17-2aaa7a6a0cf49e5e013d773b;8ca42420-f626-453b-b34b-7a40394568e1)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:06,243 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:07,006 - __main__ - ERROR - Error processing chat_history/None_20250408-172458.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d18-07501cf14e87189e47e8b191;842a9df7-49f1-485b-b2ac-6affde2bb8c4)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:08,078 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:08,659 - __main__ - ERROR - Error processing chat_history/None_20250408-172750.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d1a-63b94c88106891ae7e3e6115;f5c72760-c8a7-4948-9a01-cd4c50a8118f)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:12,397 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:13,027 - __main__ - ERROR - Error processing chat_history/None_20250408-173221.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d1e-2b1ba98d28b948b1758cf3c3;4e79d863-b173-4cad-8ee9-163959aac45e)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:14,135 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:14,745 - __main__ - ERROR - Error processing chat_history/None_20250408-174255.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d20-0043043f73a568d845410df4;096e756f-f4f9-4fea-b838-e9bd722a55d5)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:15,713 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:16,356 - __main__ - ERROR - Error processing chat_history/None_20250408-174352.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d22-73fd809c1a8a17446cceffb3;0a613739-047a-4b19-b055-6eeedb53be5c)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:16,906 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:03:17,836 - __main__ - ERROR - Error processing chat_history/None_20250408-174421.json: 429 Client Error: Too Many Requests for url: https://huggingface.co/api/datasets/Rulga/status-law-knowledge-base/commit/main (Request ID: Root=1-67f59d23-3ce9b0eb2dc7cc327a099b64;de2303ea-24c6-4379-b1d9-5c8ca2548ec9)
+
+You have been rate-limited; you can retry this action in about 1 hour. If you're a new user, your limits will raise progressively over time. Get in touch with us at website@huggingface.co if you need access now.
+2025-04-09 00:03:17,840 - __main__ - INFO - Repair completed: 42 files repaired, 0 skipped, 12 errors
+2025-04-09 00:03:17,894 - __main__ - INFO - Successfully repaired 42 files
+2025-04-09 00:15:31,036 - __main__ - INFO - === CONFIGURATION ===
+2025-04-09 00:15:31,075 - __main__ - INFO - Chat history path: ./chat_history
+2025-04-09 00:15:31,075 - __main__ - INFO - Dataset ID: Rulga/status-law-knowledge-base
+2025-04-09 00:15:31,075 - __main__ - INFO - Test mode: No
+2025-04-09 00:15:31,075 - __main__ - INFO - Local only: No
+2025-04-09 00:15:31,075 - __main__ - INFO - ==================
+2025-04-09 00:15:31,895 - __main__ - INFO - Found 55 files with 'None_' prefix in dataset
+2025-04-09 00:15:34,926 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:15:35,608 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:16:36,045 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:18:36,424 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:18:36,434 - __main__ - ERROR - Error processing chat_history/None_20250408-165439.json: RetryError[<Future at 0x155840b74a0 state=finished raised HfHubHTTPError>]
+2025-04-09 00:18:38,974 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:18:39,576 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:19:39,969 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:21:40,373 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:21:40,373 - __main__ - ERROR - Error processing chat_history/None_20250408-165706.json: RetryError[<Future at 0x155841310a0 state=finished raised HfHubHTTPError>]
+2025-04-09 00:21:42,981 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:21:43,592 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:22:44,012 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:24:44,440 - __main__ - WARNING - Rate limit hit, waiting before retry...
+2025-04-09 00:24:44,440 - __main__ - ERROR - Error processing chat_history/None_20250408-170353.json: RetryError[<Future at 0x155831ba540 state=finished raised HfHubHTTPError>]
+2025-04-09 00:24:47,040 - huggingface_hub.hf_api - WARNING - No files have been modified since last commit. Skipping to prevent empty commit.
+2025-04-09 00:24:47,694 - __main__ - WARNING - Rate limit hit, waiting before retry...

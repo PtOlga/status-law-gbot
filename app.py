@@ -1105,32 +1105,32 @@ with gr.Blocks() as demo:
             gr.Markdown("### Evaluation of Chat Responses")
             
             with gr.Row():
-                with gr.Column(scale=2):
+                with gr.Column(scale=1):  # Changed to full width
                     # Status and reports section
                     with gr.Row():
                         with gr.Column(scale=1):
                             evaluation_status = gr.Textbox(label="Evaluation Status", interactive=False)
                             refresh_status_btn = gr.Button("Refresh Status")
                             
-                            # Add status message for data refresh
-                            refresh_data_status = gr.Textbox(
-                                label="Refresh Status", 
-                                interactive=False,
-                                visible=True
-                            )
-                        
                         with gr.Column(scale=1):
                             evaluation_report = gr.HTML(label="Evaluation Report")
                             refresh_report_btn = gr.Button("Generate Report")
                     
-                            # QA pairs table section
-                            show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
-                            import pandas as pd
-                            qa_table = gr.DataFrame(
-                            pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]),
-                            interactive=True,
-                            wrap=True
-                        )
+                    # Move refresh status below
+                    refresh_data_status = gr.Textbox(
+                        label="Refresh Status", 
+                        interactive=False,
+                        visible=True
+                    )
+                    
+                    # QA pairs table section - now full width
+                    show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
+                    qa_table = gr.DataFrame(
+                        pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]),
+                        interactive=True,
+                        wrap=True,
+                        height=400  # Added explicit height
+                    )
                     
                     # Conversation selection section
                     gr.Markdown("### Select Conversation to Evaluate")
