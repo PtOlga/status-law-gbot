@@ -112,13 +112,13 @@ def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) 
     qa_pairs = evaluator.get_qa_pairs_for_evaluation(limit=1000)
     
     # Get existing annotation if any
-    annotation = evaluator.get_annotation(conversation_id)  # Changed from get_annotation_by_conversation_id
+    annotation = evaluator.get_annotation(conversation_id)
     
     if annotation:
         return (
             annotation.get("question", ""),
-            annotation.get("original_answer", ""),
-            annotation.get("improved_answer", ""),
+            annotation.get("original_answer", ""),  # Changed from original_answer
+            annotation.get("improved_answer", ""),  # Changed from improved_answer
             annotation.get("ratings", {}).get("accuracy", 1),
             annotation.get("ratings", {}).get("completeness", 1),
             annotation.get("ratings", {}).get("relevance", 1),
@@ -132,7 +132,7 @@ def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) 
         if qa_pair.get("conversation_id") == conversation_id:
             return (
                 qa_pair.get("question", ""),
-                qa_pair.get("answer", ""),
+                qa_pair.get("original_answer", ""),  # Changed from answer
                 "",  # Empty improved answer
                 1,   # Default ratings
                 1,
