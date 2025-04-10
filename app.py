@@ -1113,31 +1113,38 @@ with gr.Blocks(css="""
             gr.Markdown("### Evaluation of Chat Responses")
             
             with gr.Row():
-                with gr.Column(scale=1):  # Changed to full width
-                    # Status and reports section
-                    with gr.Row():
-                        with gr.Column(scale=1):
-                            evaluation_status = gr.Textbox(label="Evaluation Status", interactive=False)
-                            refresh_status_btn = gr.Button("Refresh Status")
-                            
-                        with gr.Column(scale=1):
-                            evaluation_report = gr.HTML(label="Evaluation Report")
-                            refresh_report_btn = gr.Button("Generate Report")
-                    
-                    # Move refresh status below
-                    refresh_data_status = gr.Textbox(
-                        label="Refresh Status", 
+                with gr.Column(scale=1):
+                    # Status section
+                    evaluation_status = gr.Textbox(
+                        label="Evaluation Status",
                         interactive=False,
-                        visible=True
+                        show_label=True
+                    )
+                    refresh_status_btn = gr.Button("Refresh Status")
+                    
+                    # Moved refresh status and evaluation report here
+                    refresh_data_status = gr.Textbox(
+                        label="Refresh Status",
+                        interactive=False,
+                        show_label=True
                     )
                     
-                    # QA pairs table section - now full width
-                    show_evaluated = gr.Checkbox(label="Show Already Evaluated Pairs", value=False)
-                    qa_table = gr.DataFrame(
-                        pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]),
+                    evaluation_report = gr.HTML(label="Evaluation Report")
+                    refresh_report_btn = gr.Button("Generate Report")
+                    
+                    # QA pairs table section
+                    show_evaluated = gr.Checkbox(
+                        label="Show Already Evaluated Pairs",
+                        value=False
+                    )
+                    qa_table = gr.Dataframe(
+                        value=pd.DataFrame(
+                            columns=["Conversation ID", "Question", "Timestamp", "Evaluated"]
+                        ),
                         interactive=True,
                         wrap=True,
-                        elem_classes="table-container"
+                        height=400,
+                        show_label=True
                     )
                     
                     # Conversation selection section
