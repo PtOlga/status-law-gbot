@@ -10,8 +10,7 @@ import os
 # Third-party imports
 import gradio as gr
 import pandas as pd  # Add this import
-from huggingface_hub import HfApi
-from huggingface_inference_api import InferenceClient
+from huggingface_hub import HfApi, InferenceClient 
 from langdetect import detect, LangDetectException
 import langdetect
 from dotenv import load_dotenv
