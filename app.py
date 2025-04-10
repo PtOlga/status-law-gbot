@@ -1209,8 +1209,10 @@ with gr.Blocks(css="""
             def on_table_select(evt: gr.SelectData) -> str:
                 """Handle table row selection"""
                 try:
-                    # Возвращаем полный conversation_id из первой колонки
-                    return evt.value[0] if evt.value else ""
+                    # Get the full row data
+                    row_data = evt.data
+                    # Return the full Conversation ID from the first column
+                    return row_data[0]
                 except Exception as e:
                     logger.error(f"Error in table selection: {str(e)}")
                     return ""
@@ -1218,7 +1220,7 @@ with gr.Blocks(css="""
             # Table row selection handler
             qa_table.select(
                 fn=on_table_select,
-                inputs=[],  # Не нужны входные данные
+                inputs=[],
                 outputs=[selected_conversation]
             )
             
