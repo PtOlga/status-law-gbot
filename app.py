@@ -825,27 +825,24 @@ def delete_conversation_from_huggingface(conversation_id):
         
         # Get list of files in dataset 
         try:
-            # Extract just the directory name from DATASET_CHAT_HISTORY_PATH
-            dir_name = os.path.basename(DATASET_CHAT_HISTORY_PATH)
-            
-            # Get all files in chat history directory
+            # Get all files in dataset
             files_info = api.list_repo_files(
                 repo_id=DATASET_ID,
-                repo_type="dataset",
-                path=dir_name
+                repo_type="dataset"
             )
             
-            # Find files with matching conversation ID
-            matching_files = [
+            # Find files with matching conversation ID in chat history
+            chat_files = [
                 file for file in files_info 
-                if f"{conversation_id}_" in os.path.basename(file)
+                if file.startswith(f"{DATASET_CHAT_HISTORY_PATH}/") and 
+                f"{conversation_id}_" in os.path.basename(file)
             ]
             
-            if not matching_files:
-                return False, f"No files found in dataset for conversation ID: {conversation_id}"
+            if not chat_files:
+                return False, f"No chat files found for conversation ID: {conversation_id}"
                 
             # Delete each matching file
-            for file_path in matching_files:
+            for file_path in chat_files:
                 try:
                     api.delete_file(
                         repo_id=DATASET_ID,
@@ -856,28 +853,27 @@ def delete_conversation_from_huggingface(conversation_id):
                 except Exception as e:
                     logger.error(f"Error deleting file {file_path} from dataset: {str(e)}")
             
-            # Try to delete evaluation file if it exists
-            evaluation_path = f"{dir_name}/evaluations/evaluation_{conversation_id}.json"
+            # Try to delete annotation file if it exists
+            annotation_path = f"{DATASET_ANNOTATIONS_PATH}/annotation_{conversation_id}.json"
             try:
                 api.delete_file(
                     repo_id=DATASET_ID,
                     repo_type="dataset",
-                    path_in_repo=evaluation_path
+                    path_in_repo=annotation_path
                 )
-                logger.info(f"Deleted evaluation file from HF dataset: {evaluation_path}")
+                logger.info(f"Deleted annotation file from HF dataset: {annotation_path}")
             except Exception as e:
-                # It's okay if evaluation file doesn't exist
-                logger.debug(f"Could not delete evaluation file {evaluation_path}: {str(e)}")
+                # It's okay if annotation file doesn't exist
+                logger.debug(f"Could not delete annotation file {annotation_path}: {str(e)}")
                 
-            return True, f"Deleted {len(matching_files)} file(s) from dataset for conversation: {conversation_id}"
+            return True, f"Deleted {len(chat_files)} file(s) from dataset for conversation: {conversation_id}"
             
         except (RepositoryNotFoundError, RevisionNotFoundError) as e:
             return False, f"Dataset or path not found: {str(e)}"
             
     except Exception as e:
         logger.error(f"Error deleting conversation from dataset: {str(e)}")
-        return False, f"Error deleting conversation from dataset: {str(e)}"
-    
+        return False, f"Error deleting conversation from dataset: {str(e)}"    
     
 def delete_conversation(conversation_id, evaluator):
     """
