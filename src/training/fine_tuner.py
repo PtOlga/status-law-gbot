@@ -18,7 +18,15 @@ from transformers import (
 )
 from datasets import load_dataset
 from src.analytics.chat_analyzer import ChatAnalyzer
-from config.settings import MODEL_PATH, TRAINING_OUTPUT_DIR
+from src.analytics.chat_evaluator import ChatEvaluator
+from config.settings import (
+    HF_TOKEN,
+    DATASET_ID,
+    DATASET_CHAT_HISTORY_PATH,
+    DATASET_FINE_TUNED_PATH,
+    DATASET_TRAINING_DATA_PATH,
+    DATASET_TRAINING_LOGS_PATH
+)
 
 # Настройка логирования
 logging.basicConfig(
@@ -32,7 +40,7 @@ class FineTuner:
                  output_dir: Optional[str] = None,
                  device: str = "cuda" if os.environ.get("CUDA_VISIBLE_DEVICES") else "cpu"):
         self.base_model_id = base_model_id
-        self.output_dir = output_dir or TRAINING_OUTPUT_DIR
+        self.output_dir = output_dir or DATASET_FINE_TUNED_PATH
         self.device = device
         self.tokenizer = None
         self.model = None
@@ -406,17 +414,17 @@ def finetune_from_chat_history(epochs: int = 3,
         evaluator = ChatEvaluator(
             hf_token=HF_TOKEN,
             dataset_id=DATASET_ID,
-            chat_history_path=CHAT_HISTORY_PATH
+            chat_history_path=DATASET_CHAT_HISTORY_PATH  # Используем путь из датасета
         )
         
-        # Create temporary file for training data
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
-            training_data_path = f.name
+        # Create temporary file for training data in dataset
+        training_data_path = os.path.join(DATASET_TRAINING_DATA_PATH, f"training_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jsonl")
+        os.makedirs(os.path.dirname(training_data_path), exist_ok=True)
         
         # Export evaluated data
         success, message = evaluator.export_training_data(
             output_file=training_data_path,
-            min_rating=3  # Используем более мягкий порог рейтинга
+            min_rating=3
         )
         
         if not success:
@@ -435,16 +443,14 @@ def finetune_from_chat_history(epochs: int = 3,
         
         # Create and start fine-tuning process
         tuner = FineTuner()
-        success, message = tuner.prepare_and_train(
+        success, message = tuner.train(
             training_data_path=training_data_path,
             num_train_epochs=epochs,
             per_device_train_batch_size=batch_size,
             learning_rate=learning_rate
         )
         
-        # Cleanup
-        if os.path.exists(training_data_path):
-            os.remove(training_data_path)
+        # Не удаляем training_data_path, так как он теперь в датасете
         
         if success:
             return True, f"Successfully fine-tuned model with {example_count} evaluated examples: {message}"
