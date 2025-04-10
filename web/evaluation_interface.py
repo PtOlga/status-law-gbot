@@ -46,7 +46,7 @@ def get_evaluation_status(evaluator, force_reload=False):
         
         # Import pandas here to avoid circular imports
         import pandas as pd
-        empty_df = pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"])
+        empty_df = pd.DataFrame(columns=["Conversation ID", "Question", "Answer", "Evaluated"])
         
         return f"Error getting status: {str(e)}", empty_df, f"Error: {str(e)}"
 
@@ -82,7 +82,7 @@ def get_qa_pairs_dataframe(evaluator, show_evaluated=False, force_reload=False):
                 {
                     "Conversation ID": qa["conversation_id"],
                     "Question": qa["question"][:50] + "..." if len(qa["question"]) > 50 else qa["question"],
-                    "Timestamp": qa.get("timestamp", ""),
+                    "Answer": qa["original_answer"][:100] + "..." if len(qa["original_answer"]) > 100 else qa["original_answer"],
                     "Evaluated": "Yes" if qa["conversation_id"] in evaluated_ids else "No"
                 }
                 for qa in qa_pairs
@@ -90,11 +90,11 @@ def get_qa_pairs_dataframe(evaluator, show_evaluated=False, force_reload=False):
             return df
         else:
             import pandas as pd
-            return pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"])
+            return pd.DataFrame(columns=["Conversation ID", "Question", "Answer", "Evaluated"])
     except Exception as e:
         logger.error(f"Error getting QA pairs dataframe: {e}")
         import pandas as pd
-        return pd.DataFrame(columns=["Conversation ID", "Question", "Timestamp", "Evaluated"])
+        return pd.DataFrame(columns=["Conversation ID", "Question", "Answer", "Evaluated"])
 
 def load_qa_pair_for_evaluation(conversation_id: str, evaluator: ChatEvaluator) -> Tuple[str, str, str, int, int, int, int, int, str]:
     """

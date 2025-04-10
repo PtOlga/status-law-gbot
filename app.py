@@ -1209,9 +1209,8 @@ with gr.Blocks(css="""
             def on_table_select(evt: gr.SelectData) -> str:
                 """Handle table row selection"""
                 try:
-                    # evt.value содержит данные выбранной строки
-                    # Возвращаем conversation_id из первой колонки
-                    return evt.value[0]
+                    # Возвращаем полный conversation_id из первой колонки
+                    return evt.value[0] if evt.value else ""
                 except Exception as e:
                     logger.error(f"Error in table selection: {str(e)}")
                     return ""
