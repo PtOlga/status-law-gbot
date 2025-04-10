@@ -47,7 +47,6 @@ class FineTuner:
         self.model = None
         self.chat_analyzer = ChatAnalyzer()
         
-        # Создаём директорию для сохранения моделей в датасете
         os.makedirs(self.output_dir, exist_ok=True)
     
     def prepare_training_data(self, output_file: Optional[str] = None) -> str:
@@ -204,76 +203,7 @@ class FineTuner:
         )
         
         return tokenized_dataset
-    
-    # Добавить этот метод в класс fine_tuner.py или в функции модуля:
-
-def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_rating=4):
-    """
-    Fine-tune model using annotated QA pairs
-    
-    Args:
-        epochs: Number of training epochs
-        batch_size: Batch size for training
-        learning_rate: Learning rate
-        min_rating: Minimum average rating for including examples
         
-    Returns:
-        (success, message)
-    """
-    try:
-        import tempfile
-        import os
-        from src.analytics.chat_evaluator import ChatEvaluator
-        from config.settings import HF_TOKEN, DATASET_ID, CHAT_HISTORY_PATH
-        
-        # Create evaluator
-        evaluator = ChatEvaluator(
-            hf_token=HF_TOKEN,
-            dataset_id=DATASET_ID,
-            chat_history_path=CHAT_HISTORY_PATH
-        )
-        
-        # Create temporary file for training data
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.jsonl', delete=False) as temp_file:
-            temp_path = temp_file.name
-        
-        # Export high-quality examples
-        success, message = evaluator.export_training_data(temp_path, min_rating)
-        
-        if not success:
-            return False, f"Failed to export training data: {message}"
-        
-        # Count examples
-        with open(temp_path, 'r') as f:
-            example_count = sum(1 for _ in f)
-        
-        if example_count == 0:
-            return False, "No high-quality examples found for fine-tuning"
-        
-        # Run actual fine-tuning using the export file
-        from src.training.fine_tuner import finetune_from_file
-        
-        success, message = finetune_from_file(
-            training_file=temp_path,
-            epochs=epochs,
-            batch_size=batch_size,
-            learning_rate=learning_rate
-        )
-        
-        # Clean up temporary file
-        try:
-            os.unlink(temp_path)
-        except:
-            pass
-        
-        if success:
-            return True, f"Successfully fine-tuned model with {example_count} annotated examples: {message}"
-        else:
-            return False, f"Fine-tuning failed: {message}"
-        
-    except Exception as e:
-        return False, f"Error during fine-tuning from annotations: {str(e)}"
-    
     def train(
         self,
         training_data_path: str,
@@ -286,7 +216,7 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
     ) -> Tuple[bool, str]:
         """
         Train the model using provided data
-    
+        
         Args:
             training_data_path: Path to training data file
             num_train_epochs: Number of training epochs
@@ -295,7 +225,7 @@ def finetune_from_annotations(epochs=3, batch_size=4, learning_rate=2e-4, min_ra
             learning_rate: Learning rate
             logging_steps: Number of steps between logging
             save_strategy: When to save checkpoints
-        
+            
         Returns:
             (success, message)
         """
@@ -404,7 +334,7 @@ def finetune_from_chat_history(epochs: int = 3,
         (success, message)
     """
     try:
-        # Create evaluator instance - убираем лишний параметр
+        # Create evaluator instance
         evaluator = ChatEvaluator(
             hf_token=HF_TOKEN,
             dataset_id=DATASET_ID
