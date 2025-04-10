@@ -410,11 +410,10 @@ def finetune_from_chat_history(epochs: int = 3,
         (success, message)
     """
     try:
-        # Create evaluator instance
+        # Create evaluator instance - убираем лишний параметр
         evaluator = ChatEvaluator(
             hf_token=HF_TOKEN,
-            dataset_id=DATASET_ID,
-            chat_history_path=DATASET_CHAT_HISTORY_PATH  # Используем путь из датасета
+            dataset_id=DATASET_ID
         )
         
         # Create temporary file for training data in dataset
@@ -449,8 +448,6 @@ def finetune_from_chat_history(epochs: int = 3,
             per_device_train_batch_size=batch_size,
             learning_rate=learning_rate
         )
-        
-        # Не удаляем training_data_path, так как он теперь в датасете
         
         if success:
             return True, f"Successfully fine-tuned model with {example_count} evaluated examples: {message}"
