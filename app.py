@@ -1233,7 +1233,7 @@ with gr.Blocks(css="""
                         interactive=False,
                         show_label=True
                     )
-                    refresh_status_btn = gr.Button("Refresh Status")
+                    refresh_status_btn = gr.Button("Refresh Status and Chat History")
                     
                     # Moved refresh status and evaluation report here
                     refresh_data_status = gr.Textbox(

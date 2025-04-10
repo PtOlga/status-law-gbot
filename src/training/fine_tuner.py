@@ -391,7 +391,7 @@ def finetune_from_chat_history(epochs: int = 3,
                              batch_size: int = 4,
                              learning_rate: float = 2e-4) -> Tuple[bool, str]:
     """
-    Function to start fine-tuning process based on chat history
+    Function to start fine-tuning process based on evaluated chat history
     
     Args:
         epochs: Number of training epochs
@@ -401,45 +401,58 @@ def finetune_from_chat_history(epochs: int = 3,
     Returns:
         (success, message)
     """
-    # Analyze chats and prepare data
-    analyzer = ChatAnalyzer()
-    report = analyzer.analyze_chats()
-    
-    if not report or "Failed to load chat history" in report:
-        return False, "Failed to load chat history for training"
-    
-    # Extract QA pairs for training
-    qa_pairs = analyzer.extract_question_answer_pairs()
-    
-    if len(qa_pairs) < 10:
-        return False, f"Insufficient data for fine-tuning. Only {len(qa_pairs)} QA pairs found."
-    
-    # Create temporary file for training data
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
-        for pair in qa_pairs:
-            json.dump({
-                "messages": [
-                    {"role": "user", "content": pair["question"]},
-                    {"role": "assistant", "content": pair["answer"]}
-                ]
-            }, f, ensure_ascii=False)
-            f.write('\n')
-        training_data_path = f.name
-    
-    # Create and start fine-tuning process
-    tuner = FineTuner()
-    success, message = tuner.prepare_and_train(
-        training_data_path=training_data_path,
-        num_train_epochs=epochs,
-        per_device_train_batch_size=batch_size,
-        learning_rate=learning_rate
-    )
-    
-    # Cleanup
-    if os.path.exists(training_data_path):
-        os.remove(training_data_path)
-    
-    return success, message
+    try:
+        # Create evaluator instance
+        evaluator = ChatEvaluator(
+            hf_token=HF_TOKEN,
+            dataset_id=DATASET_ID,
+            chat_history_path=CHAT_HISTORY_PATH
+        )
+        
+        # Create temporary file for training data
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.jsonl') as f:
+            training_data_path = f.name
+        
+        # Export evaluated data
+        success, message = evaluator.export_training_data(
+            output_file=training_data_path,
+            min_rating=3  # Используем более мягкий порог рейтинга
+        )
+        
+        if not success:
+            if os.path.exists(training_data_path):
+                os.remove(training_data_path)
+            return False, f"Failed to prepare training data: {message}"
+            
+        # Count examples
+        with open(training_data_path, 'r') as f:
+            example_count = sum(1 for _ in f)
+            
+        if example_count == 0:
+            if os.path.exists(training_data_path):
+                os.remove(training_data_path)
+            return False, "No evaluated examples found for fine-tuning"
+        
+        # Create and start fine-tuning process
+        tuner = FineTuner()
+        success, message = tuner.prepare_and_train(
+            training_data_path=training_data_path,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=batch_size,
+            learning_rate=learning_rate
+        )
+        
+        # Cleanup
+        if os.path.exists(training_data_path):
+            os.remove(training_data_path)
+        
+        if success:
+            return True, f"Successfully fine-tuned model with {example_count} evaluated examples: {message}"
+        else:
+            return False, f"Fine-tuning failed: {message}"
+            
+    except Exception as e:
+        return False, f"Error during fine-tuning: {str(e)}"
 
 def finetune_from_file(
     training_file: str,

@@ -442,3 +442,4 @@ class ChatEvaluator:
         metrics["improvement_rate"] = (improved_count / len(annotations)) * 100
         
         return metrics
+
