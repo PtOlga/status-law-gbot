@@ -9,7 +9,7 @@ import os
 
 # Third-party imports
 import gradio as gr
-import pandas as pd  # Add this import
+import pandas as pd  
 
 
 from huggingface_hub import HfApi, InferenceClient 
@@ -18,6 +18,7 @@ import langdetect
 from dotenv import load_dotenv
 import requests
 from datasets import load_dataset
+from config.constants import URLS 
 
 # Set seed for consistent results
 langdetect.DetectorFactory.seed = 0
@@ -479,11 +480,17 @@ def log_api_error(user_message, error_message, model_id, is_fallback=False):
         logger.info(f"API error logged to {log_path}")
     except Exception as e:
         logger.error(f"Failed to log API error: {str(e)}")
-
+        
 def update_kb():
     """Function to update existing knowledge base with new documents"""
     try:
+        # Вызываем функцию для обновления базы знаний
         success, message = create_vector_store(mode="update")
+        
+        # Если обновление успешно, сохраняем метаданные с датой обновления
+        if success:
+            save_kb_metadata()
+            
         return message
     except Exception as e:
         return f"Error updating knowledge base: {str(e)}"
@@ -491,10 +498,62 @@ def update_kb():
 def rebuild_kb():
     """Function to create knowledge base from scratch"""
     try:
+        # Вызываем функцию для пересоздания базы знаний
         success, message = create_vector_store(mode="rebuild")
+        
+        # Если создание успешно, сохраняем метаданные с датой обновления
+        if success:
+            save_kb_metadata()
+            
         return message
     except Exception as e:
         return f"Error creating knowledge base: {str(e)}"
+
+def save_kb_metadata():
+    """Save knowledge base metadata to dataset"""
+    try:
+        # Создаем метаданные с текущей датой
+        metadata = {
+            "last_updated": datetime.datetime.now().isoformat(),
+            "source_count": len(URLS),
+            "sources": URLS
+        }
+        
+        # Сохраняем в датасет
+        json_content = json.dumps(metadata, indent=2).encode('utf-8')
+        api = HfApi(token=HF_TOKEN)
+        
+        # Убедимся, что директория существует
+        try:
+            files = api.list_repo_files(
+                repo_id=DATASET_ID,
+                repo_type="dataset"
+            )
+            
+            if "vector_store" not in files:
+                # Создаем пустой файл, чтобы создать директорию
+                api.upload_file(
+                    path_or_fileobj=b"",
+                    path_in_repo="vector_store/.gitkeep",
+                    repo_id=DATASET_ID,
+                    repo_type="dataset"
+                )
+        except Exception as e:
+            logger.warning(f"Error checking vector_store directory: {str(e)}")
+        
+        # Загружаем метаданные
+        api.upload_file(
+            path_or_fileobj=json_content,
+            path_in_repo="vector_store/metadata.json",
+            repo_id=DATASET_ID,
+            repo_type="dataset"
+        )
+        
+        logger.info("Knowledge base metadata saved successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving knowledge base metadata: {str(e)}")
+        return False        
 
 def save_chat_history(history, conversation_id):
     """Save chat history to a file and to HuggingFace dataset"""
@@ -1051,6 +1110,158 @@ with gr.Blocks(css="""
             )
             
             clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
+            
+            
+            
+        with gr.Tab("Knowledge Base"):
+            gr.Markdown("### Knowledge Base Management")
+        
+        with gr.Row():
+            with gr.Column(scale=2):
+                # Отображение источников
+                gr.Markdown("#### Information Sources")
+                sources_list = gr.Dataframe(
+                    value=pd.DataFrame({
+                        "URL": URLS,
+                        "Include": [True for _ in URLS],
+                        "Status": ["Ready" for _ in URLS]
+                    }),
+                    interactive=True,
+                    wrap=True,
+                    row_count=15,
+                    show_label=False
+                )
+                
+                # Статус операций с базой знаний
+                kb_status = gr.Textbox(
+                    label="Operation Status",
+                    interactive=False,
+                    placeholder="Ready",
+                    value="Ready"
+                )
+                
+                # Кнопки для управления базой знаний
+                with gr.Row():
+                    update_kb_btn = gr.Button("Update Knowledge Base", variant="primary")
+                    rebuild_kb_btn = gr.Button("Rebuild Knowledge Base from Scratch", variant="secondary")
+                    
+                gr.Markdown("""
+                <small>
+                **Update Knowledge Base**: Adds new information to the existing knowledge base.
+                
+                **Rebuild Knowledge Base**: Recreates the entire knowledge base from scratch. Use this if there are inconsistencies.
+                
+                All changes are saved to the Hugging Face dataset.
+                </small>
+                """)
+            
+            with gr.Column(scale=1):
+                # Информация о текущей базе знаний
+                gr.Markdown("#### Knowledge Base Information")
+                
+                # Функция для получения информации о базе знаний
+                def get_kb_info():
+                    try:
+                        vector_store = load_vector_store()
+                        if vector_store is None or isinstance(vector_store, str):
+                            return """
+                            **Status**: Not found or error
+                            
+                            **Documents**: 0
+                            
+                            **Last updated**: Never
+                            
+                            Please create a knowledge base using the buttons on the left.
+                            """
+                        
+                        # Получаем информацию о векторном хранилище
+                        doc_count = len(vector_store.docstore._dict)
+                        sources = set()
+                        
+                        for doc_id, doc in vector_store.docstore._dict.items():
+                            if hasattr(doc, 'metadata') and 'source' in doc.metadata:
+                                sources.add(doc.metadata['source'])
+                        
+                        source_count = len(sources)
+                        
+                        # Если хранилище существует, но источников нет
+                        if source_count == 0:
+                            return """
+                            **Status**: Created but empty
+                            
+                            **Documents**: 0
+                            
+                            **Last updated**: Unknown
+                            
+                            Please rebuild the knowledge base using the button on the left.
+                            """
+                        
+                        # Получаем файл с датой последнего обновления
+                        last_updated = "Unknown"
+                        try:
+                            from src.knowledge_base.dataset import DatasetManager
+                            dataset = DatasetManager()
+                            last_updated = dataset.get_last_update_date() or "Unknown"
+                        except Exception as e:
+                            logger.error(f"Error getting last update date: {str(e)}")
+                        
+                        return f"""
+                        **Status**: Active
+                        
+                        **Documents**: {doc_count}
+                        
+                        **Sources**: {source_count}
+                        
+                        **Last updated**: {last_updated}
+                        """
+                        
+                    except Exception as e:
+                        return f"""
+                        **Status**: Error
+                        
+                        **Details**: {str(e)}
+                        
+                        Please try rebuilding the knowledge base.
+                        """
+                
+                kb_info = gr.Markdown(value=get_kb_info())
+                refresh_kb_info_btn = gr.Button("Refresh Information")
+
+    # 3. Добавим обработчики событий для кнопок в конце файла
+    # Добавьте эти обработчики перед строкой "if __name__ == "__main__":"
+
+        # Обработчики для Knowledge Base
+        update_kb_btn.click(
+            fn=update_kb_with_selected,
+            inputs=[sources_list],
+            outputs=[kb_status]
+        )
+        
+        rebuild_kb_btn.click(
+            fn=rebuild_kb_with_selected,
+            inputs=[sources_list],
+            outputs=[kb_status]
+        )
+        
+        # Обновление информации о базе знаний
+        refresh_kb_info_btn.click(
+            fn=get_kb_info,
+            inputs=[],
+            outputs=[kb_info]
+        )
+        
+        # Автоматическое обновление информации после операций с базой знаний
+        update_kb_btn.click(
+            fn=get_kb_info,
+            inputs=[],
+            outputs=[kb_info]
+        )
+        
+        rebuild_kb_btn.click(
+            fn=get_kb_info,
+            inputs=[],
+            outputs=[kb_info]
+        )
 
         with gr.Tab("Model Settings"):
             gr.Markdown("### Model Configuration")
@@ -1387,7 +1598,7 @@ with gr.Blocks(css="""
                 inputs=[],
                 outputs=[evaluation_status, qa_table, refresh_data_status]
             )
-    
+
     # Model change handler - outside of Tabs but inside Blocks
     model_selector.change(
         fn=change_model,
@@ -1416,3 +1627,198 @@ if __name__ == "__main__":
         logger.warning("Knowledge base not found. Please create it through the interface.")
     
     demo.launch(share=True)
+
+# Add helper functions for URL selection:
+def get_selected_urls(sources_df):
+    """Get list of URLs selected for inclusion"""
+    try:
+        if not isinstance(sources_df, pd.DataFrame):
+            sources_df = pd.DataFrame(sources_df)
+        
+        selected_urls = sources_df[sources_df["Include"] == True]["URL"].tolist()
+        return selected_urls
+    except Exception as e:
+        logger.error(f"Error getting selected URLs: {str(e)}")
+        return []
+
+def update_kb_with_selected(sources_df):
+    """Update knowledge base using only selected URLs"""
+    try:
+        selected_urls = get_selected_urls(sources_df)
+        
+        if not selected_urls:
+            return "Error: No URLs selected for inclusion"
+        
+        from config import constants
+        original_urls = constants.URLS
+        constants.URLS = selected_urls
+        
+        try:
+            success, message = create_vector_store(mode="update")
+            
+            if success:
+                metadata = {
+                    "last_updated": datetime.datetime.now().isoformat(),
+                    "source_count": len(selected_urls),
+                    "sources": selected_urls
+                }
+                
+                json_content = json.dumps(metadata, indent=2).encode('utf-8')
+                api = HfApi(token=HF_TOKEN)
+                
+                api.upload_file(
+                    path_or_fileobj=json_content,
+                    path_in_repo="vector_store/metadata.json",
+                    repo_id=DATASET_ID,
+                    repo_type="dataset"
+                )
+            
+            return message
+        finally:
+            constants.URLS = original_urls
+            
+    except Exception as e:
+        return f"Error updating knowledge base: {str(e)}"
+
+def rebuild_kb_with_selected(sources_df):
+    """Rebuild knowledge base from scratch using only selected URLs"""
+    try:
+        selected_urls = get_selected_urls(sources_df)
+        
+        if not selected_urls:
+            return "Error: No URLs selected for inclusion"
+        
+        from config import constants
+        original_urls = constants.URLS
+        constants.URLS = selected_urls
+        
+        try:
+            success, message = create_vector_store(mode="rebuild")
+            
+            if success:
+                metadata = {
+                    "last_updated": datetime.datetime.now().isoformat(),
+                    "source_count": len(selected_urls),
+                    "sources": selected_urls
+                }
+                
+                json_content = json.dumps(metadata, indent=2).encode('utf-8')
+                api = HfApi(token=HF_TOKEN)
+                
+                api.upload_file(
+                    path_or_fileobj=json_content,
+                    path_in_repo="vector_store/metadata.json",
+                    repo_id=DATASET_ID,
+                    repo_type="dataset"
+                )
+            
+            return message
+        finally:
+            constants.URLS = original_urls
+            
+    except Exception as e:
+        return f"Error rebuilding knowledge base: {str(e)}"
+
+# Add new function for source status updates
+def update_source_status(df):
+    """Update status column based on Include selection"""
+    try:
+        if not isinstance(df, pd.DataFrame):
+            df = pd.DataFrame(df)
+        
+        df["Status"] = df["Include"].apply(lambda x: "Selected" if x else "Excluded")
+        selected_count = df["Include"].sum()
+        
+        return df, f"{selected_count} URLs selected for inclusion"
+    except Exception as e:
+        return df, f"Error updating status: {str(e)}"
+
+# Update event handlers in the Knowledge Base tab section
+with gr.Tab("Knowledge Base"):
+    gr.Markdown("### Knowledge Base Management")
+    
+    with gr.Row():
+        with gr.Column(scale=2):
+            # Sources list with selection
+            gr.Markdown("#### Information Sources")
+            sources_list = gr.Dataframe(
+                value=pd.DataFrame({
+                    "URL": URLS,
+                    "Include": [True for _ in URLS],
+                    "Status": ["Ready" for _ in URLS]
+                }),
+                interactive=True,
+                wrap=True,
+                row_count=15,
+                show_label=False
+            )
+            
+            # Status display
+            kb_status = gr.Textbox(
+                label="Operation Status",
+                interactive=False,
+                placeholder="Ready",
+                value="Ready"
+            )
+            
+            # Control buttons
+            with gr.Row():
+                update_kb_btn = gr.Button("Update Knowledge Base", variant="primary")
+                rebuild_kb_btn = gr.Button("Rebuild Knowledge Base from Scratch", variant="secondary")
+            
+            # Help text
+            gr.Markdown("""
+            <small>
+            **Update Knowledge Base**: Adds new information to the existing knowledge base.
+            
+            **Rebuild Knowledge Base**: Recreates the entire knowledge base from scratch. Use this if there are inconsistencies.
+            
+            All changes are saved to the Hugging Face dataset.
+            </small>
+            """)
+        
+        with gr.Column(scale=1):
+            # Knowledge base info display
+            gr.Markdown("#### Knowledge Base Information")
+            kb_info = gr.Markdown(value=get_kb_info())
+            refresh_kb_info_btn = gr.Button("Refresh Information")
+
+    # Event handlers for Knowledge Base operations
+    update_kb_btn.click(
+        fn=update_kb_with_selected,
+        inputs=[sources_list],
+        outputs=[kb_status]
+    )
+    
+    rebuild_kb_btn.click(
+        fn=rebuild_kb_with_selected,
+        inputs=[sources_list],
+        outputs=[kb_status]
+    )
+    
+    # Auto-refresh knowledge base info after operations
+    update_kb_btn.click(
+        fn=get_kb_info,
+        inputs=[],
+        outputs=[kb_info]
+    )
+    
+    rebuild_kb_btn.click(
+        fn=get_kb_info,
+        inputs=[],
+        outputs=[kb_info]
+    )
+    
+    # Refresh button handler
+    refresh_kb_info_btn.click(
+        fn=get_kb_info,
+        inputs=[],
+        outputs=[kb_info]
+    )
+    
+    # Source selection status update handler
+    sources_list.change(
+        fn=update_source_status,
+        inputs=[sources_list],
+        outputs=[sources_list, kb_status]
+    )

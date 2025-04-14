@@ -64,28 +64,26 @@ status-law-gbot/
 │   └── training/         # Training module
 │       ├── fine_tuner.py
 │       └── model_manager.py
-└── data/               # Data storage
-    ├── vector_store/   # FAISS vector storage
-    │   ├── index.faiss
-    │   └── index.pkl
-    ├── chat_history/   # Conversation logs
-    │   └── logs.json
-    └── fine_tuned_models/  # Fine-tuned model storage
-        └── model_registry.json
+└── dataset/             # HuggingFace dataset structure
+    ├── annotations/     # Conversation annotations
+    ├── chat_history/    # Chat logs and conversations
+    ├── fine_tuned_models/ # Fine-tuned model storage
+    ├── preferences/     # User preferences
+    ├── training_data/   # Processed training data
+    ├── training_logs/   # Training process logs
+    └── vector_store/    # FAISS vector storage
 ```
 
 ## 💾 Data Storage
 
-### Vector Store
-- `data/vector_store/index.faiss`: FAISS vector store for document embeddings
-- `data/vector_store/index.pkl`: Metadata and configuration for vector store
-
-### Chat History
-- `data/chat_history/logs.json`: JSON file containing chat history and metadata
-
-### Models
-- `src/models/fine_tuned/`: Directory for storing fine-tuned models
-- `src/models/registry.json`: Model registry and configuration
+### Dataset Organization
+- `annotations/`: Conversation quality metrics and annotations
+- `chat_history/`: JSON files containing chat conversations
+- `fine_tuned_models/`: Storage for LoRA adapters and model checkpoints
+- `preferences/`: User preferences and settings
+- `training_data/`: Processed data ready for model training
+- `training_logs/`: Detailed training process logs
+- `vector_store/`: FAISS indexes for semantic search
 
 ## 🛠️ Setup
 

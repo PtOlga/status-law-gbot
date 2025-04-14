@@ -37,6 +37,61 @@ class DatasetManager:
         self.chat_history_path = DATASET_CHAT_HISTORY_PATH
         self.fine_tuned_path = DATASET_FINE_TUNED_PATH
         self.annotations_path = DATASET_ANNOTATIONS_PATH
+        
+    # Добавьте этот метод в класс DatasetManager в файле src/knowledge_base/dataset.py
+
+def get_last_update_date(self):
+    """
+    Получает дату последнего обновления базы знаний.
+    
+    Returns:
+        str: Дата последнего обновления в формате ISO или None, если информация недоступна
+    """
+    try:
+        # Попробуем получить метаданные из датасета
+        api = HfApi(token=self.hf_token)
+        
+        # Сначала проверим, есть ли специальный файл метаданных
+        files = api.list_repo_files(
+            repo_id=self.dataset_id,
+            repo_type="dataset"
+        )
+        
+        metadata_file = "vector_store/metadata.json"
+        
+        if metadata_file in files:
+            # Скачиваем файл метаданных
+            temp_dir = tempfile.mkdtemp()
+            metadata_path = os.path.join(temp_dir, "metadata.json")
+            
+            api.hf_hub_download(
+                repo_id=self.dataset_id,
+                repo_type="dataset",
+                filename=metadata_file,
+                local_dir=temp_dir,
+                local_dir_use_symlinks=False
+            )
+            
+            # Открываем и читаем дату из метаданных
+            with open(metadata_path, 'r') as f:
+                metadata = json.load(f)
+                return metadata.get("last_updated", None)
+        
+        # Если специальный файл не найден, можно использовать дату последнего коммита
+        # для директории vector_store
+        last_commit = api.get_repo_info(
+            repo_id=self.dataset_id,
+            repo_type="dataset"
+        )
+        
+        # Получаем дату последнего коммита
+        if hasattr(last_commit, "lastModified"):
+            return last_commit.lastModified
+        
+        return None
+    except Exception as e:
+        logger.error(f"Error getting last update date: {str(e)}")
+        return None    
 
     def init_dataset_structure(self) -> Tuple[bool, str]:
         """
