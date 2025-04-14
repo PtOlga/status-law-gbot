@@ -1662,8 +1662,8 @@ def update_kb_with_selected(sources_df) -> str:
         str: Status message
     """
     try:
-        # Filter selected URLs
-        selected_urls = sources_df[sources_df['Include']]['URL'].tolist()
+        # Get selected URLs
+        selected_urls = get_selected_urls(sources_df)
         
         if not selected_urls:
             return "Error: No sources selected"
@@ -1679,23 +1679,7 @@ def update_kb_with_selected(sources_df) -> str:
             success, message = create_vector_store(mode="update")
             
             if success:
-                # Create metadata with current date and selected URLs
-                metadata = {
-                    "last_updated": datetime.datetime.now().isoformat(),
-                    "source_count": len(selected_urls),
-                    "sources": selected_urls
-                }
-                
-                # Save to dataset
-                json_content = json.dumps(metadata, indent=2).encode('utf-8')
-                api = HfApi(token=HF_TOKEN)
-                
-                api.upload_file(
-                    path_or_fileobj=json_content,
-                    path_in_repo="vector_store/metadata.json",
-                    repo_id=DATASET_ID,
-                    repo_type="dataset"
-                )
+                save_kb_metadata()
             
             return message
         finally:
@@ -1703,6 +1687,7 @@ def update_kb_with_selected(sources_df) -> str:
             constants.URLS = original_urls
             
     except Exception as e:
+        logger.error(f"Error updating knowledge base: {str(e)}")
         return f"Error updating knowledge base: {str(e)}"
 
 def rebuild_kb_with_selected(sources_df):

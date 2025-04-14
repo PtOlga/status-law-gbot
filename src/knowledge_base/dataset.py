@@ -41,46 +41,51 @@ class DatasetManager:
     # Добавьте этот метод в класс DatasetManager в файле src/knowledge_base/dataset.py
     
 def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
-    """
-    Downloads vector store from dataset.
-    
-    Returns:
-        tuple: (success, result) where result is either FAISS object or error message
-    """
+    """Download vector store from dataset"""
     try:
-        # Create temporary directory for download
-        temp_dir = tempfile.mkdtemp()
-        logger.debug(f"Created temporary directory at {temp_dir}")
-        
-        try:
-            # Download vector store files
-            self.api.snapshot_download(
-                repo_id=self.dataset_name,
-                repo_type="dataset",
-                local_dir=temp_dir,
-                allow_patterns=["vector_store/*"]
-            )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            print(f"Downloading to temporary directory: {temp_dir}")
             
-            # Load vector store
-            embeddings = HuggingFaceEmbeddings(
-                model_name=EMBEDDING_MODEL,
-                model_kwargs={'device': 'cpu'}
-            )
-            
-            vector_store = FAISS.load_local(
-                os.path.join(temp_dir, "vector_store"),
-                embeddings
-            )
-            
-            return True, vector_store
-            
-        finally:
-            # Clean up temp directory
-            shutil.rmtree(temp_dir)
-            
+            # Download files to temporary directory
+            try:
+                index_path = self.api.hf_hub_download(
+                    repo_id=self.dataset_name,
+                    filename="vector_store/index.faiss",
+                    repo_type="dataset",
+                    local_dir=temp_dir
+                )
+                print(f"Downloaded index.faiss to: {index_path}")
+                
+                config_path = self.api.hf_hub_download(
+                    repo_id=self.dataset_name,
+                    filename="vector_store/index.pkl",
+                    repo_type="dataset",
+                    local_dir=temp_dir
+                )
+                print(f"Downloaded index.pkl to: {config_path}")
+                
+                # Verify files exist
+                if not os.path.exists(index_path) or not os.path.exists(config_path):
+                    return False, f"Downloaded files not found at {temp_dir}"
+                
+                # Load vector store from temporary directory
+                embeddings = HuggingFaceEmbeddings(
+                    model_name=EMBEDDING_MODEL,
+                    model_kwargs={'device': 'cpu'}
+                )
+                
+                vector_store = FAISS.load_local(
+                    os.path.join(temp_dir, "vector_store"),
+                    embeddings
+                )
+                
+                return True, vector_store
+                
+            except Exception as e:
+                return False, f"Error downloading vector store: {str(e)}"
     except Exception as e:
-        logger.error(f"Error downloading vector store: {str(e)}")
-        return False, f"Error downloading vector store: {str(e)}"
+        logger.error(f"Error in download_vector_store: {str(e)}")
+        return False, str(e)
 
 def get_last_update_date(self):
     """
