@@ -19,6 +19,15 @@ Status Law Assistant is a smart chatbot that answers user questions about Status
 
 ## ✨ Key Features
 
+- Knowledge Base Management:
+  - Dynamic URL management for knowledge base sources
+  - Ability to add custom URLs for information extraction
+  - Selective source inclusion/exclusion
+  - Two modes of knowledge base updates:
+    - Update Mode: Adds new information while preserving existing knowledge
+    - Rebuild Mode: Complete recreation of knowledge base from selected sources
+  - Real-time status tracking for knowledge base operations
+  - Automatic metadata management and versioning
 - Automatic creation and updating of knowledge base from status.law website content
 - Intelligent information retrieval for query responses
 - Context-aware response generation
@@ -138,6 +147,36 @@ from src.training.model_manager import switch_to_model
 
 switch_to_model("llama-7b")  # or "zephyr-7b", "mistral-7b", "xglm-7b"
 ```
+
+## 🔄 Knowledge Base Management
+
+The application provides a flexible interface for managing knowledge sources:
+
+1. **Source Management**:
+   - View and edit the list of source URLs
+   - Enable/disable specific sources
+   - Add custom URLs for information extraction
+   - Monitor source status and availability
+
+2. **Update Operations**:
+   - **Update Knowledge Base**: Incrementally add new information while preserving existing knowledge
+   - **Rebuild Knowledge Base**: Completely recreate the knowledge base using only selected sources
+   - Real-time operation status tracking
+   - Automatic backup of previous versions
+
+3. **Usage**:
+   ```python
+   # Add new URL to knowledge base
+   sources_df.append({"URL": "https://example.com", "Include": True, "Status": "Ready"})
+   
+   # Update knowledge base with selected sources
+   update_kb_with_selected(sources_df)
+   
+   # Rebuild knowledge base from scratch
+   rebuild_kb_with_selected(sources_df)
+   ```
+
+All changes to the knowledge base are automatically synchronized with the Hugging Face dataset, ensuring data persistence and version control.
 
 ## 🔗 Related Links
 
