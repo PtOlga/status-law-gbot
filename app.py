@@ -4,27 +4,16 @@ import io
 import json
 import logging
 import os
-#import sys
-#from pathlib import Path
+import pandas as pd  
 
 # Third-party imports
 import gradio as gr
-import pandas as pd  
-
-
 from huggingface_hub import HfApi, InferenceClient 
 from langdetect import detect, LangDetectException
 import langdetect
 from dotenv import load_dotenv
 import requests
 from datasets import load_dataset
-from config.constants import URLS 
-
-# Set seed for consistent results
-langdetect.DetectorFactory.seed = 0
-
-# Load environment variables
-load_dotenv()
 
 # Local imports - config
 from config.constants import DEFAULT_SYSTEM_MESSAGE, URLS
@@ -43,7 +32,8 @@ from config.settings import (
     MODELS
 )
 
-from src.chat.evaluator import ChatEvaluator
+# Local imports - source modules
+from src.analytics.chat_evaluator import ChatEvaluator  # Исправленный импорт
 from src.knowledge_base.dataset import DatasetManager
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 import config.constants as constants
