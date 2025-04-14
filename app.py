@@ -995,7 +995,7 @@ def initialize_app():
         token=HF_TOKEN
     )
     
-    # Загружаем сохраненный системный промпт из предпочтений или используем DEFAULT_SYSTEM_MESSAGE
+    # Load saved system prompt from preferences or use DEFAULT_SYSTEM_MESSAGE
     system_prompt_text = DEFAULT_SYSTEM_MESSAGE
     if "system_prompt" in preferences and "current" in preferences["system_prompt"]:
         system_prompt_text = preferences["system_prompt"]["current"]
@@ -1012,7 +1012,7 @@ def initialize_chat_evaluator():
             dataset_id=DATASET_ID
         )
         
-        # Проверим наличие директорий
+        # Check if directories exist
         os.makedirs(DATASET_CHAT_HISTORY_PATH, exist_ok=True)
         os.makedirs(os.path.join(DATASET_ANNOTATIONS_PATH), exist_ok=True)
         
@@ -1180,7 +1180,7 @@ with gr.Blocks(css="""
                             Please create a knowledge base using the buttons on the left.
                             """
                         
-                        # Получаем информацию о векторном хранилище
+                        # Get information about vector store
                         doc_count = len(vector_store.docstore._dict)
                         sources = set()
                         
@@ -1651,33 +1651,42 @@ def get_selected_urls(sources_df):
         logger.error(f"Error getting selected URLs: {str(e)}")
         return []
 
-def update_kb_with_selected(sources_df):
-    """Update knowledge base using only selected URLs"""
+def update_kb_with_selected(sources_df) -> str:
+    """
+    Updates knowledge base with selected sources.
+    
+    Args:
+        sources_df: Dataframe containing sources and their selection status
+        
+    Returns:
+        str: Status message
+    """
     try:
-        selected_urls = get_selected_urls(sources_df)
+        # Filter selected URLs
+        selected_urls = sources_df[sources_df['Include']]['URL'].tolist()
         
         if not selected_urls:
-            return "Error: No URLs selected for inclusion"
+            return "Error: No sources selected"
+            
+        # Store original URLs
+        original_urls = URLS.copy()
         
-        # Временно заменяем URLS на выбранные URL
-        from config import constants
-        original_urls = constants.URLS
+        # Update URLS with selected ones
         constants.URLS = selected_urls
         
         try:
-            # Обновляем базу знаний
+            # Update knowledge base
             success, message = create_vector_store(mode="update")
             
-            # Сохраняем метаданные с информацией о выбранных URL
             if success:
-                # Создаем метаданные с текущей датой и выбранными URL
+                # Create metadata with current date and selected URLs
                 metadata = {
                     "last_updated": datetime.datetime.now().isoformat(),
                     "source_count": len(selected_urls),
                     "sources": selected_urls
                 }
                 
-                # Сохраняем в датасет
+                # Save to dataset
                 json_content = json.dumps(metadata, indent=2).encode('utf-8')
                 api = HfApi(token=HF_TOKEN)
                 
@@ -1690,7 +1699,7 @@ def update_kb_with_selected(sources_df):
             
             return message
         finally:
-            # Восстанавливаем оригинальные URL
+            # Restore original URLs
             constants.URLS = original_urls
             
     except Exception as e:

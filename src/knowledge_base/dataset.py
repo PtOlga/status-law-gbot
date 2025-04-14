@@ -40,106 +40,47 @@ class DatasetManager:
         
     # Добавьте этот метод в класс DatasetManager в файле src/knowledge_base/dataset.py
     
-def download_vector_store(self):
+def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
     """
-    Загружает векторное хранилище из датасета.
+    Downloads vector store from dataset.
     
     Returns:
-        tuple: (success, result), где result - это объект FAISS или сообщение об ошибке
+        tuple: (success, result) where result is either FAISS object or error message
     """
     try:
-        import tempfile
-        import shutil
-        from langchain.vectorstores import FAISS
-        from langchain.embeddings import HuggingFaceEmbeddings
-        from config.settings import EMBEDDING_MODEL, DATASET_VECTOR_STORE_PATH
-        
-        logger.info(f"Attempting to download vector store from dataset {self.dataset_id}")
-        
-        # Создаем временную директорию для скачивания
+        # Create temporary directory for download
         temp_dir = tempfile.mkdtemp()
         logger.debug(f"Created temporary directory at {temp_dir}")
         
         try:
-            # Инициализируем API
-            api = HfApi(token=self.hf_token)
+            # Download vector store files
+            self.api.snapshot_download(
+                repo_id=self.dataset_name,
+                repo_type="dataset",
+                local_dir=temp_dir,
+                allow_patterns=["vector_store/*"]
+            )
             
-            # Проверяем наличие файлов индекса в датасете
-            try:
-                files = api.list_repo_files(
-                    repo_id=self.dataset_id,
-                    repo_type="dataset"
-                )
-                
-                # Ищем файлы векторного хранилища
-                vector_store_files = [f for f in files if f.startswith(f"{DATASET_VECTOR_STORE_PATH}/")]
-                
-                if not vector_store_files:
-                    logger.warning(f"No vector store files found in dataset {self.dataset_id}")
-                    return False, "Vector store not found in dataset"
-                
-                # Создаем папку для скачивания
-                vector_store_dir = os.path.join(temp_dir, DATASET_VECTOR_STORE_PATH)
-                os.makedirs(vector_store_dir, exist_ok=True)
-                
-                # Скачиваем все файлы
-                for file in vector_store_files:
-                    # Получаем имя файла без пути
-                    filename = os.path.basename(file)
-                    # Скачиваем файл
-                    api.hf_hub_download(
-                        repo_id=self.dataset_id,
-                        repo_type="dataset",
-                        filename=file,
-                        local_dir=temp_dir,
-                        local_dir_use_symlinks=False
-                    )
-                    logger.debug(f"Downloaded {file}")
-                
-                # Инициализируем embeddings
-                embeddings = HuggingFaceEmbeddings(model_name=EMBEDDING_MODEL)
-                
-                # Загружаем FAISS из скачанных файлов
-                try:
-                    # Путь к директории с файлами FAISS
-                    faiss_path = os.path.join(temp_dir, DATASET_VECTOR_STORE_PATH)
-                    
-                    # Проверяем наличие необходимых файлов
-                    if not os.path.exists(os.path.join(faiss_path, "index.faiss")):
-                        logger.error(f"Missing FAISS index file at {faiss_path}")
-                        return False, "Missing FAISS index file"
-                        
-                    if not os.path.exists(os.path.join(faiss_path, "index.pkl")):
-                        logger.error(f"Missing FAISS pickle file at {faiss_path}")
-                        return False, "Missing FAISS pickle file"
-                    
-                    # Загружаем FAISS из директории
-                    faiss_index = FAISS.load_local(faiss_path, embeddings)
-                    logger.info(f"Successfully loaded FAISS index with {len(faiss_index.docstore._dict)} documents")
-                    
-                    return True, faiss_index
-                    
-                except Exception as e:
-                    logger.error(f"Error loading FAISS index: {str(e)}")
-                    return False, f"Error loading FAISS index: {str(e)}"
-                
-            except Exception as e:
-                logger.error(f"Error listing files in dataset {self.dataset_id}: {str(e)}")
-                return False, f"Error accessing dataset: {str(e)}"
-                
+            # Load vector store
+            embeddings = HuggingFaceEmbeddings(
+                model_name=EMBEDDING_MODEL,
+                model_kwargs={'device': 'cpu'}
+            )
+            
+            vector_store = FAISS.load_local(
+                os.path.join(temp_dir, "vector_store"),
+                embeddings
+            )
+            
+            return True, vector_store
+            
         finally:
-            # Очищаем временную директорию
-            try:
-                shutil.rmtree(temp_dir)
-                logger.debug(f"Cleaned up temporary directory {temp_dir}")
-            except Exception as e:
-                logger.warning(f"Error cleaning up temporary directory {temp_dir}: {str(e)}")
-    
+            # Clean up temp directory
+            shutil.rmtree(temp_dir)
+            
     except Exception as e:
-        logger.error(f"Exception in download_vector_store: {str(e)}")
-        import traceback
-        logger.error(traceback.format_exc())
-        return False, f"Error downloading vector store: {str(e)}"    
+        logger.error(f"Error downloading vector store: {str(e)}")
+        return False, f"Error downloading vector store: {str(e)}"
 
 def get_last_update_date(self):
     """
