@@ -7,8 +7,10 @@ import json
 import tempfile
 from typing import Tuple, List, Dict, Any, Optional, Union
 from datetime import datetime
+import logging
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
+from langchain_huggingface import HuggingFaceEmbeddings
 from config.settings import (
     VECTOR_STORE_PATH,
     HF_TOKEN,
@@ -23,7 +25,6 @@ from config.settings import (
 from langchain_huggingface import HuggingFaceEmbeddings
 import logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class DatasetManager:

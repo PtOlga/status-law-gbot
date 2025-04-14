@@ -27,7 +27,7 @@ langdetect.DetectorFactory.seed = 0
 load_dotenv()
 
 # Local imports - config
-from config.constants import DEFAULT_SYSTEM_MESSAGE
+from config.constants import DEFAULT_SYSTEM_MESSAGE, URLS
 from config.settings import (
     API_CONFIG,
     ACTIVE_MODEL,
@@ -36,12 +36,57 @@ from config.settings import (
     DATASET_ID,
     DATASET_PREFERENCES_PATH,
     DATASET_VECTOR_STORE_PATH,
-    DATASET_ANNOTATIONS_PATH,  # Добавляем импорт
+    DATASET_ANNOTATIONS_PATH,
     DEFAULT_MODEL,
     EMBEDDING_MODEL,
     HF_TOKEN,
     MODELS
 )
+
+from src.chat.evaluator import ChatEvaluator
+from src.knowledge_base.dataset import DatasetManager
+from src.knowledge_base.vector_store import create_vector_store, load_vector_store
+import config.constants as constants
+
+def get_selected_urls(sources_df):
+    """Get list of URLs selected for inclusion"""
+    try:
+        if not isinstance(sources_df, pd.DataFrame):
+            sources_df = pd.DataFrame(sources_df)
+        selected_urls = sources_df[sources_df["Include"] == True]["URL"].tolist()
+        return selected_urls
+    except Exception as e:
+        logger.error(f"Error getting selected URLs: {str(e)}")
+        return []
+
+def update_kb_with_selected(sources_df) -> str:
+    """Updates knowledge base with selected sources"""
+    try:
+        selected_urls = get_selected_urls(sources_df)
+        
+        if not selected_urls:
+            return "Error: No sources selected"
+            
+        original_urls = URLS.copy()
+        constants.URLS = selected_urls
+        
+        try:
+            success, message = create_vector_store(mode="update")
+            if success:
+                save_kb_metadata()
+            return message
+        finally:
+            constants.URLS = original_urls
+            
+    except Exception as e:
+        logger.error(f"Error updating knowledge base: {str(e)}")
+        return f"Error updating knowledge base: {str(e)}"
+
+# Set seed for consistent results
+langdetect.DetectorFactory.seed = 0
+
+# Load environment variables
+load_dotenv()
 
 # Local imports - source modules
 from src.analytics.chat_evaluator import ChatEvaluator
