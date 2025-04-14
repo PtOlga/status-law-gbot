@@ -1160,7 +1160,13 @@ with gr.Blocks(css="""
                 gr.Markdown("#### Knowledge Base Information")
                 
                 # Функция для получения информации о базе знаний
-                def get_kb_info():
+                def get_kb_info() -> str:
+                    """
+                    Get information about the current state of the knowledge base.
+                    
+                    Returns:
+                        str: Formatted markdown string containing knowledge base statistics
+                    """
                     try:
                         vector_store = load_vector_store()
                         if vector_store is None or isinstance(vector_store, str):
@@ -1628,14 +1634,18 @@ if __name__ == "__main__":
     
     demo.launch(share=True)
 
-# Add helper functions for URL selection:
+# Эти функции нужно добавить в app.py после существующих функций update_kb и rebuild_kb
+
 def get_selected_urls(sources_df):
     """Get list of URLs selected for inclusion"""
     try:
+        # Преобразуем в DataFrame, если это еще не DataFrame
         if not isinstance(sources_df, pd.DataFrame):
             sources_df = pd.DataFrame(sources_df)
         
+        # Получаем только те URL, у которых Include=True
         selected_urls = sources_df[sources_df["Include"] == True]["URL"].tolist()
+        
         return selected_urls
     except Exception as e:
         logger.error(f"Error getting selected URLs: {str(e)}")
@@ -1649,20 +1659,25 @@ def update_kb_with_selected(sources_df):
         if not selected_urls:
             return "Error: No URLs selected for inclusion"
         
+        # Временно заменяем URLS на выбранные URL
         from config import constants
         original_urls = constants.URLS
         constants.URLS = selected_urls
         
         try:
+            # Обновляем базу знаний
             success, message = create_vector_store(mode="update")
             
+            # Сохраняем метаданные с информацией о выбранных URL
             if success:
+                # Создаем метаданные с текущей датой и выбранными URL
                 metadata = {
                     "last_updated": datetime.datetime.now().isoformat(),
                     "source_count": len(selected_urls),
                     "sources": selected_urls
                 }
                 
+                # Сохраняем в датасет
                 json_content = json.dumps(metadata, indent=2).encode('utf-8')
                 api = HfApi(token=HF_TOKEN)
                 
@@ -1675,6 +1690,7 @@ def update_kb_with_selected(sources_df):
             
             return message
         finally:
+            # Восстанавливаем оригинальные URL
             constants.URLS = original_urls
             
     except Exception as e:
@@ -1688,20 +1704,25 @@ def rebuild_kb_with_selected(sources_df):
         if not selected_urls:
             return "Error: No URLs selected for inclusion"
         
+        # Временно заменяем URLS на выбранные URL
         from config import constants
         original_urls = constants.URLS
         constants.URLS = selected_urls
         
         try:
+            # Пересоздаем базу знаний
             success, message = create_vector_store(mode="rebuild")
             
+            # Сохраняем метаданные с информацией о выбранных URL
             if success:
+                # Создаем метаданные с текущей датой и выбранными URL
                 metadata = {
                     "last_updated": datetime.datetime.now().isoformat(),
                     "source_count": len(selected_urls),
                     "sources": selected_urls
                 }
                 
+                # Сохраняем в датасет
                 json_content = json.dumps(metadata, indent=2).encode('utf-8')
                 api = HfApi(token=HF_TOKEN)
                 
@@ -1714,25 +1735,75 @@ def rebuild_kb_with_selected(sources_df):
             
             return message
         finally:
+            # Восстанавливаем оригинальные URL
             constants.URLS = original_urls
             
     except Exception as e:
         return f"Error rebuilding knowledge base: {str(e)}"
 
-# Add new function for source status updates
+def save_kb_metadata():
+    """Save knowledge base metadata to dataset"""
+    try:
+        # Создаем метаданные с текущей датой
+        metadata = {
+            "last_updated": datetime.datetime.now().isoformat(),
+            "source_count": len(URLS),
+            "sources": URLS
+        }
+        
+        # Сохраняем в датасет
+        json_content = json.dumps(metadata, indent=2).encode('utf-8')
+        api = HfApi(token=HF_TOKEN)
+        
+        # Убедимся, что директория существует
+        try:
+            files = api.list_repo_files(
+                repo_id=DATASET_ID,
+                repo_type="dataset"
+            )
+            
+            if "vector_store" not in files:
+                # Создаем пустой файл, чтобы создать директорию
+                api.upload_file(
+                    path_or_fileobj=b"",
+                    path_in_repo="vector_store/.gitkeep",
+                    repo_id=DATASET_ID,
+                    repo_type="dataset"
+                )
+        except Exception as e:
+            logger.warning(f"Error checking vector_store directory: {str(e)}")
+        
+        # Загружаем метаданные
+        api.upload_file(
+            path_or_fileobj=json_content,
+            path_in_repo="vector_store/metadata.json",
+            repo_id=DATASET_ID,
+            repo_type="dataset"
+        )
+        
+        logger.info("Knowledge base metadata saved successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Error saving knowledge base metadata: {str(e)}")
+        return False
+
 def update_source_status(df):
     """Update status column based on Include selection"""
     try:
+        # Если df не является DataFrame, преобразуем его
         if not isinstance(df, pd.DataFrame):
             df = pd.DataFrame(df)
         
+        # Обновляем колонку Status на основе Include
         df["Status"] = df["Include"].apply(lambda x: "Selected" if x else "Excluded")
+        
+        # Подсчитываем количество выбранных URL
         selected_count = df["Include"].sum()
         
+        # Обновляем таблицу и возвращаем сообщение о количестве выбранных URL
         return df, f"{selected_count} URLs selected for inclusion"
     except Exception as e:
         return df, f"Error updating status: {str(e)}"
-
 # Update event handlers in the Knowledge Base tab section
 with gr.Tab("Knowledge Base"):
     gr.Markdown("### Knowledge Base Management")
