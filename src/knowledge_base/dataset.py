@@ -22,8 +22,6 @@ from config.settings import (
     DATASET_FINE_TUNED_PATH,
     DATASET_ANNOTATIONS_PATH
 )
-from langchain_huggingface import HuggingFaceEmbeddings
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -197,9 +195,9 @@ def get_last_update_date(self):
                 config_path = os.path.join(temp_dir, "index.pkl")
                 
                 # Add debug logging
-                print(f"Debug - Checking files before upload:")
-                print(f"index.faiss exists: {os.path.exists(index_path)}, size: {os.path.getsize(index_path) if os.path.exists(index_path) else 0} bytes")
-                print(f"index.pkl exists: {os.path.exists(config_path)}, size: {os.path.getsize(config_path) if os.path.exists(config_path) else 0} bytes")
+                logger.debug(f"Checking files before upload:")
+                logger.debug(f"index.faiss exists: {os.path.exists(index_path)}, size: {os.path.getsize(index_path) if os.path.exists(index_path) else 0} bytes")
+                logger.debug(f"index.pkl exists: {os.path.exists(config_path)}, size: {os.path.getsize(config_path) if os.path.exists(config_path) else 0} bytes")
                 
                 if not os.path.exists(index_path) or not os.path.exists(config_path):
                     return False, "Vector store files not created"
@@ -284,6 +282,7 @@ def get_last_update_date(self):
                 return True, "Vector store uploaded successfully"
                 
         except Exception as e:
+            logger.error(f"Error uploading vector store: {str(e)}")
             return False, f"Error uploading vector store: {str(e)}"
 
     def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
