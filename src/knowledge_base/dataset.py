@@ -10,7 +10,7 @@ from datetime import datetime
 import logging
 from huggingface_hub import HfApi, HfFolder
 from langchain_community.vectorstores import FAISS
-from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_community.embeddings import HuggingFaceEmbeddings
 from config.settings import (
     VECTOR_STORE_PATH,
     HF_TOKEN,
@@ -26,155 +26,59 @@ from config.settings import (
 logger = logging.getLogger(__name__)
 
 class DatasetManager:
-    def __init__(self, dataset_name: Optional[str] = None, token: Optional[str] = None):
-        self.dataset_name = dataset_name or DATASET_ID
-        self.token = token if token else HF_TOKEN
-        self.api = HfApi(token=self.token)
-        
-        # Use paths from settings
-        self.vector_store_path = DATASET_VECTOR_STORE_PATH
-        self.chat_history_path = DATASET_CHAT_HISTORY_PATH
-        self.fine_tuned_path = DATASET_FINE_TUNED_PATH
-        self.annotations_path = DATASET_ANNOTATIONS_PATH
-        
-    # Добавьте этот метод в класс DatasetManager в файле src/knowledge_base/dataset.py
-    
-def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
-    """Download vector store from dataset"""
-    try:
-        with tempfile.TemporaryDirectory() as temp_dir:
-            logger.debug(f"Downloading to temporary directory: {temp_dir}")
-            
-            try:
-                # Download vector store files
-                index_path = self.api.hf_hub_download(
-                    repo_id=self.dataset_name,
-                    filename="vector_store/index.faiss",
-                    repo_type="dataset",
-                    local_dir=temp_dir
-                )
-                logger.debug(f"Downloaded index.faiss to: {index_path}")
-                
-                config_path = self.api.hf_hub_download(
-                    repo_id=self.dataset_name,
-                    filename="vector_store/index.pkl",
-                    repo_type="dataset",
-                    local_dir=temp_dir
-                )
-                logger.debug(f"Downloaded index.pkl to: {config_path}")
-                
-                # Initialize embeddings
-                embeddings = HuggingFaceEmbeddings(
-                    model_name=EMBEDDING_MODEL,
-                    model_kwargs={'device': 'cpu'}
-                )
-                
-                # Load vector store
-                vector_store = FAISS.load_local(
-                    folder_path=os.path.join(temp_dir, "vector_store"),
-                    embeddings=embeddings
-                )
-                
-                return True, vector_store
-                
-            except Exception as e:
-                logger.error(f"Error downloading vector store: {str(e)}")
-                return False, f"Error downloading vector store: {str(e)}"
-                
-    except Exception as e:
-        logger.error(f"Error in download_vector_store: {str(e)}")
-        return False, str(e)
+    def __init__(self, token: str = None, dataset_id: str = None):
+        """Initialize dataset manager"""
+        self.hf_token = token or HF_TOKEN
+        self.dataset_id = dataset_id or DATASET_ID
+        self.dataset_name = self.dataset_id
+        self.api = HfApi(token=self.hf_token)
 
-def get_last_update_date(self):
-    """
-    Получает дату последнего обновления базы знаний.
-    
-    Returns:
-        str: Дата последнего обновления в формате ISO или None, если информация недоступна
-    """
-    try:
-        # Попробуем получить метаданные из датасета
-        api = HfApi(token=self.hf_token)
-        
-        # Сначала проверим, есть ли специальный файл метаданных
-        files = api.list_repo_files(
-            repo_id=self.dataset_id,
-            repo_type="dataset"
-        )
-        
-        metadata_file = "vector_store/metadata.json"
-        
-        if metadata_file in files:
-            # Скачиваем файл метаданных
-            temp_dir = tempfile.mkdtemp()
-            metadata_path = os.path.join(temp_dir, "metadata.json")
-            
-            api.hf_hub_download(
-                repo_id=self.dataset_id,
-                repo_type="dataset",
-                filename=metadata_file,
-                local_dir=temp_dir,
-                local_dir_use_symlinks=False
-            )
-            
-            # Открываем и читаем дату из метаданных
-            with open(metadata_path, 'r') as f:
-                metadata = json.load(f)
-                return metadata.get("last_updated", None)
-        
-        # Если специальный файл не найден, можно использовать дату последнего коммита
-        # для директории vector_store
-        last_commit = api.get_repo_info(
-            repo_id=self.dataset_id,
-            repo_type="dataset"
-        )
-        
-        # Получаем дату последнего коммита
-        if hasattr(last_commit, "lastModified"):
-            return last_commit.lastModified
-        
-        return None
-    except Exception as e:
-        logger.error(f"Error getting last update date: {str(e)}")
-        return None    
-
-    def init_dataset_structure(self) -> Tuple[bool, str]:
-        """
-        Initialize dataset structure with required directories
-        
-        Returns:
-            (success, message)
-        """
+    def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
+        """Download vector store from dataset"""
         try:
-            # Check if repository exists
-            try:
-                self.api.repo_info(repo_id=self.dataset_name, repo_type="dataset")
-            except Exception:
-                # Create repository if it doesn't exist
-                self.api.create_repo(repo_id=self.dataset_name, repo_type="dataset", private=True)
-            
-            # Create empty .gitkeep files to maintain structure
-            directories = ["vector_store", "chat_history", "documents"]
-            
-            for directory in directories:
-                with tempfile.NamedTemporaryFile(delete=False) as temp:
-                    temp_path = temp.name
+            with tempfile.TemporaryDirectory() as temp_dir:
+                logger.debug(f"Downloading to temporary directory: {temp_dir}")
                 
                 try:
-                    self.api.upload_file(
-                        path_or_fileobj=temp_path,
-                        path_in_repo=f"{directory}/.gitkeep",
+                    # Download vector store files
+                    index_path = self.api.hf_hub_download(
                         repo_id=self.dataset_name,
-                        repo_type="dataset"
+                        filename="vector_store/index.faiss",
+                        repo_type="dataset",
+                        local_dir=temp_dir
                     )
-                finally:
-                    if os.path.exists(temp_path):
-                        os.remove(temp_path)
-            
-            return True, "Dataset structure initialized successfully"
-            
+                    logger.debug(f"Downloaded index.faiss to: {index_path}")
+                    
+                    config_path = self.api.hf_hub_download(
+                        repo_id=self.dataset_name,
+                        filename="vector_store/index.pkl",
+                        repo_type="dataset",
+                        local_dir=temp_dir
+                    )
+                    logger.debug(f"Downloaded index.pkl to: {config_path}")
+                    
+                    # Initialize embeddings
+                    embeddings = HuggingFaceEmbeddings(
+                        model_name=EMBEDDING_MODEL,
+                        model_kwargs={'device': 'cpu'}
+                    )
+                    
+                    # Load vector store
+                    vector_store = FAISS.load_local(
+                        folder_path=os.path.dirname(index_path),
+                        embeddings=embeddings,
+                        allow_dangerous_deserialization=True
+                    )
+                    
+                    return True, vector_store
+                    
+                except Exception as e:
+                    logger.error(f"Error downloading vector store: {str(e)}")
+                    return False, f"Error downloading vector store: {str(e)}"
+                    
         except Exception as e:
-            return False, f"Error initializing dataset structure: {str(e)}"
+            logger.error(f"Error in download_vector_store: {str(e)}")
+            return False, str(e)
 
     def upload_vector_store(self, vector_store: FAISS) -> Tuple[bool, str]:
         """
@@ -284,6 +188,78 @@ def get_last_update_date(self):
         except Exception as e:
             logger.error(f"Error uploading vector store: {str(e)}")
             return False, f"Error uploading vector store: {str(e)}"
+
+    def get_last_update_date(self) -> Optional[str]:
+        """
+        Get the date of last knowledge base update
+        
+        Returns:
+            str: Last update date in ISO format or None if not found
+        """
+        try:
+            # Try to get metadata from dataset
+            files = self.api.list_repo_files(
+                repo_id=self.dataset_id,
+                repo_type="dataset"
+            )
+            
+            if "vector_store/metadata.json" in files:
+                try:
+                    metadata_file = self.api.hf_hub_download(
+                        repo_id=self.dataset_id,
+                        filename="vector_store/metadata.json",
+                        repo_type="dataset"
+                    )
+                    
+                    with open(metadata_file, 'r') as f:
+                        metadata = json.load(f)
+                        return metadata.get("last_update")
+                except:
+                    return None
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting last update date: {str(e)}")
+            return None
+
+    def init_dataset_structure(self) -> Tuple[bool, str]:
+        """
+        Initialize dataset structure with required directories
+        
+        Returns:
+            (success, message)
+        """
+        try:
+            # Check if repository exists
+            try:
+                self.api.repo_info(repo_id=self.dataset_name, repo_type="dataset")
+            except Exception:
+                # Create repository if it doesn't exist
+                self.api.create_repo(repo_id=self.dataset_name, repo_type="dataset", private=True)
+            
+            # Create empty .gitkeep files to maintain structure
+            directories = ["vector_store", "chat_history", "documents"]
+            
+            for directory in directories:
+                with tempfile.NamedTemporaryFile(delete=False) as temp:
+                    temp_path = temp.name
+                
+                try:
+                    self.api.upload_file(
+                        path_or_fileobj=temp_path,
+                        path_in_repo=f"{directory}/.gitkeep",
+                        repo_id=self.dataset_name,
+                        repo_type="dataset"
+                    )
+                finally:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+            
+            return True, "Dataset structure initialized successfully"
+            
+        except Exception as e:
+            return False, f"Error initializing dataset structure: {str(e)}"
 
     def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
         """Download vector store from dataset"""
