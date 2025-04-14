@@ -72,6 +72,51 @@ def update_kb_with_selected(sources_df) -> str:
         logger.error(f"Error updating knowledge base: {str(e)}")
         return f"Error updating knowledge base: {str(e)}"
 
+def rebuild_kb_with_selected(sources_df):
+    """Rebuild knowledge base from scratch using only selected URLs"""
+    try:
+        selected_urls = get_selected_urls(sources_df)
+        
+        if not selected_urls:
+            return "Error: No URLs selected for inclusion"
+        
+        # Временно заменяем URLS на выбранные URL
+        original_urls = constants.URLS.copy()
+        constants.URLS = selected_urls
+        
+        try:
+            # Пересоздаем базу знаний
+            success, message = create_vector_store(mode="rebuild")
+            
+            # Сохраняем метаданные если успешно
+            if success:
+                metadata = {
+                    "last_updated": datetime.datetime.now().isoformat(),
+                    "source_count": len(selected_urls),
+                    "sources": selected_urls
+                }
+                
+                # Сохраняем в датасет
+                json_content = json.dumps(metadata, indent=2).encode('utf-8')
+                api = HfApi(token=HF_TOKEN)
+                
+                api.upload_file(
+                    path_or_fileobj=json_content,
+                    path_in_repo="vector_store/metadata.json",
+                    repo_id=DATASET_ID,
+                    repo_type="dataset"
+                )
+            
+            return message
+            
+        finally:
+            # Восстанавливаем оригинальные URL
+            constants.URLS = original_urls
+            
+    except Exception as e:
+        logger.error(f"Error rebuilding knowledge base: {str(e)}")
+        return f"Error rebuilding knowledge base: {str(e)}"
+
 # Set seed for consistent results
 langdetect.DetectorFactory.seed = 0
 
@@ -1734,17 +1779,15 @@ def rebuild_kb_with_selected(sources_df):
             return "Error: No URLs selected for inclusion"
         
         # Временно заменяем URLS на выбранные URL
-        from config import constants
-        original_urls = constants.URLS
+        original_urls = constants.URLS.copy()
         constants.URLS = selected_urls
         
         try:
             # Пересоздаем базу знаний
             success, message = create_vector_store(mode="rebuild")
             
-            # Сохраняем метаданные с информацией о выбранных URL
+            # Сохраняем метаданные если успешно
             if success:
-                # Создаем метаданные с текущей датой и выбранными URL
                 metadata = {
                     "last_updated": datetime.datetime.now().isoformat(),
                     "source_count": len(selected_urls),
@@ -1763,11 +1806,13 @@ def rebuild_kb_with_selected(sources_df):
                 )
             
             return message
+            
         finally:
             # Восстанавливаем оригинальные URL
             constants.URLS = original_urls
             
     except Exception as e:
+        logger.error(f"Error rebuilding knowledge base: {str(e)}")
         return f"Error rebuilding knowledge base: {str(e)}"
 
 def save_kb_metadata():

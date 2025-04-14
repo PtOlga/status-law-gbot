@@ -45,17 +45,17 @@ def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
     """Download vector store from dataset"""
     try:
         with tempfile.TemporaryDirectory() as temp_dir:
-            print(f"Downloading to temporary directory: {temp_dir}")
+            logger.debug(f"Downloading to temporary directory: {temp_dir}")
             
-            # Download files to temporary directory
             try:
+                # Download vector store files
                 index_path = self.api.hf_hub_download(
                     repo_id=self.dataset_name,
                     filename="vector_store/index.faiss",
                     repo_type="dataset",
                     local_dir=temp_dir
                 )
-                print(f"Downloaded index.faiss to: {index_path}")
+                logger.debug(f"Downloaded index.faiss to: {index_path}")
                 
                 config_path = self.api.hf_hub_download(
                     repo_id=self.dataset_name,
@@ -63,27 +63,26 @@ def download_vector_store(self) -> Tuple[bool, Union[FAISS, str]]:
                     repo_type="dataset",
                     local_dir=temp_dir
                 )
-                print(f"Downloaded index.pkl to: {config_path}")
+                logger.debug(f"Downloaded index.pkl to: {config_path}")
                 
-                # Verify files exist
-                if not os.path.exists(index_path) or not os.path.exists(config_path):
-                    return False, f"Downloaded files not found at {temp_dir}"
-                
-                # Load vector store from temporary directory
+                # Initialize embeddings
                 embeddings = HuggingFaceEmbeddings(
                     model_name=EMBEDDING_MODEL,
                     model_kwargs={'device': 'cpu'}
                 )
                 
+                # Load vector store
                 vector_store = FAISS.load_local(
-                    os.path.join(temp_dir, "vector_store"),
-                    embeddings
+                    folder_path=os.path.join(temp_dir, "vector_store"),
+                    embeddings=embeddings
                 )
                 
                 return True, vector_store
                 
             except Exception as e:
+                logger.error(f"Error downloading vector store: {str(e)}")
                 return False, f"Error downloading vector store: {str(e)}"
+                
     except Exception as e:
         logger.error(f"Error in download_vector_store: {str(e)}")
         return False, str(e)
