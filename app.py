@@ -1335,19 +1335,6 @@ with gr.Blocks(css="""
                 outputs=[kb_info]
             )
             
-            # Автоматическое обновление информации после операций с базой знаний
-            update_kb_btn.click(
-                fn=get_kb_info,
-                inputs=[],
-                outputs=[kb_info]
-            )
-            
-            rebuild_kb_btn.click(
-                fn=get_kb_info,
-                inputs=[],
-                outputs=[kb_info]
-            )
-
         with gr.Tab("Model Settings"):
             gr.Markdown("### Model Configuration")
             
