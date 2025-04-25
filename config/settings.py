@@ -1,6 +1,10 @@
 import os
 import tempfile
 from huggingface_hub import HfApi
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # API tokens
 #HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
