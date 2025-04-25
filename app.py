@@ -31,11 +31,16 @@ from config.settings import (
     HF_TOKEN,
     MODELS,
     PRO_ONLY_MODELS,
-    IS_PRO_ACCOUNT
+    IS_PRO_ACCOUNT 
 )
 
+# Ensure IS_PRO_ACCOUNT is available
+if 'IS_PRO_ACCOUNT' not in globals():
+    from config.settings import check_account_type
+    IS_PRO_ACCOUNT, _ = check_account_type()
+
 # Local imports - source modules
-from src.analytics.chat_evaluator import ChatEvaluator  # Исправленный импорт
+from src.analytics.chat_evaluator import ChatEvaluator  # Fixed import
 from src.knowledge_base.dataset import DatasetManager
 from src.knowledge_base.vector_store import create_vector_store, load_vector_store
 import config.constants as constants
@@ -82,15 +87,15 @@ def rebuild_kb_with_selected(sources_df):
         if not selected_urls:
             return "Error: No URLs selected for inclusion"
         
-        # Временно заменяем URLS на выбранные URL
+        # Temporarily replace URLS with selected ones
         original_urls = constants.URLS.copy()
         constants.URLS = selected_urls
         
         try:
-            # Пересоздаем базу знаний
+            # Rebuild knowledge base
             success, message = create_vector_store(mode="rebuild")
             
-            # Сохраняем метаданные если успешно
+            # Save metadata if successful
             if success:
                 metadata = {
                     "last_updated": datetime.datetime.now().isoformat(),
@@ -98,7 +103,7 @@ def rebuild_kb_with_selected(sources_df):
                     "sources": selected_urls
                 }
                 
-                # Сохраняем в датасет
+                # Save to dataset
                 json_content = json.dumps(metadata, indent=2).encode('utf-8')
                 api = HfApi(token=HF_TOKEN)
                 
@@ -112,7 +117,7 @@ def rebuild_kb_with_selected(sources_df):
             return message
             
         finally:
-            # Восстанавливаем оригинальные URL
+            # Restore original URLs
             constants.URLS = original_urls
             
     except Exception as e:
@@ -196,11 +201,11 @@ def save_user_preferences(model_key, parameters=None):
             
             preferences["parameters"][model_key] = parameters
         
-        # Сохраняем в датасет, используя bytes
+        # Save to dataset using bytes
         json_content = json.dumps(preferences, indent=2)
         api = HfApi(token=HF_TOKEN)
         api.upload_file(
-            path_or_fileobj=json_content.encode('utf-8'),  # Конвертируем строку в bytes
+            path_or_fileobj=json_content.encode('utf-8'),  # Convert string to bytes
             path_in_repo="preferences/user_preferences.json",
             repo_id=DATASET_ID,
             repo_type="dataset"
