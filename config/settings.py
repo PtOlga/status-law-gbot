@@ -314,7 +314,7 @@ for model in MODELS.values():
     model["endpoint"] = API_CONFIG["inference_endpoint"]
 
 # Default model
-DEFAULT_MODEL = "llama-7b"  # Changed from "zephyr-7b" to "llama-7b"
+DEFAULT_MODEL = "zephyr-7b"  # Changed from "llama-7b" to "zephyr-7b"
 ACTIVE_MODEL = MODELS[DEFAULT_MODEL]
 
 # Embedding model for vector store
