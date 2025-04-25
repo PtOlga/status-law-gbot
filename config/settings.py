@@ -214,10 +214,10 @@ MODELS = {
             "documentation": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
         }
     },
-    "bloomz-7b1-mt": {
-        "id": "bigscience/bloomz-7b1-mt",
-        "name": "BLOOMZ 7B MT",
-        "description": "Multilingual model trained on 46 languages with strong legal domain capabilities",
+    "oasst-sft-1": {
+        "id": "OpenAssistant/oasst-sft-1-pythia-12b",
+        "name": "OpenAssistant SFT-1",
+        "description": "Open Assistant model trained for dialogue and instruction following",
         "type": "base",
         "parameters": {
             "max_length": 2048,
@@ -226,8 +226,8 @@ MODELS = {
             "repetition_penalty": 1.1,
         },
         "training": {
-            "base_model_path": "bigscience/bloomz-7b1-mt",
-            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "bloomz-7b1-mt-tuned"),
+            "base_model_path": "OpenAssistant/oasst-sft-1-pythia-12b",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "oasst-sft-1-tuned"),
             "lora_config": {
                 "r": 16,
                 "lora_alpha": 32,
@@ -236,73 +236,30 @@ MODELS = {
             }
         },
         "details": {
-            "full_name": "BLOOMZ 7B1 Multilingual",
+            "full_name": "Open Assistant SFT-1",
             "capabilities": [
-                "Excellent performance across 46 languages",
-                "Strong understanding of legal terminology",
-                "Trained on multilingual instructions",
-                "Good cross-lingual transfer"
+                "Strong dialogue capabilities",
+                "Good multilingual performance",
+                "Instruction following",
+                "Community-trained on diverse datasets"
             ],
             "limitations": [
-                "Slightly slower inference than some alternatives",
-                "May require more specific prompting in some languages",
-                "Limited to formal language styles"
+                "May require more specific prompting for legal domain",
+                "Performance varies by language",
+                "Less specialized in legal terminology"
             ],
             "use_cases": [
-                "International legal documentation",
-                "Multi-jurisdiction legal advice",
-                "Cross-border legal research",
-                "Legal document translation verification"
+                "Multilingual client support",
+                "General legal consultation",
+                "Document analysis",
+                "Cross-lingual communication"
             ],
-            "documentation": "https://huggingface.co/bigscience/bloomz-7b1-mt"
+            "documentation": "https://huggingface.co/OpenAssistant/oasst-sft-1-pythia-12b"
         }
     },
-    "mgpt": {
-        "id": "sberbank-ai/mGPT",
-        "name": "mGPT",
-        "description": "Multilingual GPT model optimized for 60+ languages including Cyrillic scripts",
-        "type": "base",
-        "parameters": {
-            "max_length": 2048,
-            "temperature": 0.7,
-            "top_p": 0.9,
-            "repetition_penalty": 1.1,
-        },
-        "training": {
-            "base_model_path": "sberbank-ai/mGPT",
-            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "mgpt-tuned"),
-            "lora_config": {
-                "r": 16,
-                "lora_alpha": 32,
-                "lora_dropout": 0.05,
-                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
-            }
-        },
-        "details": {
-            "full_name": "Multilingual GPT",
-            "capabilities": [
-                "Support for 60+ languages",
-                "Excellent performance with Cyrillic scripts",
-                "Optimized for dialogue generation",
-                "Efficient resource usage"
-            ],
-            "limitations": [
-                "Less specialized in legal domain",
-                "May require additional context for complex legal terms",
-                "Performance varies by language"
-            ],
-            "use_cases": [
-                "Multilingual client communication",
-                "Basic legal document translation",
-                "General legal consultation in multiple languages",
-                "Cross-cultural legal explanation"
-            ],
-            "documentation": "https://huggingface.co/sberbank-ai/mGPT"
-        }
-    },
-    "xglm-4.5b": {
-        "id": "facebook/xglm-4.5B",
-        "name": "XGLM 4.5B",
+    "solar-10.7b": {
+        "id": "upstage/SOLAR-10.7B-Instruct-v1.0",
+        "name": "SOLAR 10.7B Instruct",
         "description": "Lightweight multilingual model with strong Asian language support",
         "type": "base",
         "parameters": {
@@ -312,8 +269,8 @@ MODELS = {
             "repetition_penalty": 1.1,
         },
         "training": {
-            "base_model_path": "facebook/xglm-4.5B",
-            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "xglm-4.5b-tuned"),
+            "base_model_path": "upstage/SOLAR-10.7B-Instruct-v1.0",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "solar-10.7b-tuned"),
             "lora_config": {
                 "r": 16,
                 "lora_alpha": 32,
@@ -322,25 +279,68 @@ MODELS = {
             }
         },
         "details": {
-            "full_name": "Meta XGLM 4.5B",
+            "full_name": "SOLAR 10.7B Instruct v1.0",
             "capabilities": [
-                "Efficient multilingual generation",
                 "Strong Asian language support",
+                "Excellent instruction following",
                 "Fast inference speed",
-                "Lower resource requirements"
+                "Good multilingual performance"
             ],
             "limitations": [
-                "Smaller model size may affect complex reasoning",
-                "Less specialized for legal domain",
-                "May require more context for accurate responses"
+                "Slightly larger size (10.7B)",
+                "May need more specific prompting for legal domain",
+                "Performance varies by language"
             ],
             "use_cases": [
-                "Quick multilingual responses",
-                "Asian language legal support",
-                "Basic legal document analysis",
-                "Rapid cross-lingual summarization"
+                "Multilingual legal assistance",
+                "Asian language support",
+                "Cross-cultural legal consultation",
+                "International document analysis"
             ],
-            "documentation": "https://huggingface.co/facebook/xglm-4.5B"
+            "documentation": "https://huggingface.co/upstage/SOLAR-10.7B-Instruct-v1.0"
+        }
+    },
+    "saiga-7b": {
+        "id": "IlyaGusev/saiga_7b_lora",
+        "name": "Saiga 7B",
+        "description": "Multilingual model optimized for Russian and English dialogue",
+        "type": "base",
+        "parameters": {
+            "max_length": 2048,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+        "training": {
+            "base_model_path": "IlyaGusev/saiga_7b_lora",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "saiga-7b-tuned"),
+            "lora_config": {
+                "r": 16,
+                "lora_alpha": 32,
+                "lora_dropout": 0.05,
+                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
+            }
+        },
+        "details": {
+            "full_name": "Saiga 7B",
+            "capabilities": [
+                "Excellent Russian language support",
+                "Strong dialogue capabilities",
+                "Optimized for instruction following",
+                "Good performance on legal and technical texts"
+            ],
+            "limitations": [
+                "Primarily focused on Russian and English",
+                "May require specific prompting for legal domain",
+                "Limited support for other languages"
+            ],
+            "use_cases": [
+                "Russian-English legal consultation",
+                "Document analysis in Russian",
+                "Legal QA for Russian speakers",
+                "Technical documentation processing"
+            ],
+            "documentation": "https://huggingface.co/IlyaGusev/saiga_7b_lora"
         }
     }
 }
