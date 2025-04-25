@@ -214,10 +214,10 @@ MODELS = {
             "documentation": "https://huggingface.co/mistralai/Mistral-7B-Instruct-v0.2"
         }
     },
-    "xglm-7.5b": {
-        "id": "facebook/xglm-7.5B",
-        "name": "XGLM 7.5B",
-        "description": "Meta's multilingual model designed for cross-lingual generation",
+    "bloomz-7b1-mt": {
+        "id": "bigscience/bloomz-7b1-mt",
+        "name": "BLOOMZ 7B MT",
+        "description": "Multilingual model trained on 46 languages with strong legal domain capabilities",
         "type": "base",
         "parameters": {
             "max_length": 2048,
@@ -226,8 +226,8 @@ MODELS = {
             "repetition_penalty": 1.1,
         },
         "training": {
-            "base_model_path": "facebook/xglm-7.5B",
-            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "xglm-7.5b-tuned"),
+            "base_model_path": "bigscience/bloomz-7b1-mt",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "bloomz-7b1-mt-tuned"),
             "lora_config": {
                 "r": 16,
                 "lora_alpha": 32,
@@ -236,26 +236,111 @@ MODELS = {
             }
         },
         "details": {
-            "full_name": "Meta XGLM 7.5B",
+            "full_name": "BLOOMZ 7B1 Multilingual",
             "capabilities": [
-                "Specialized for multilingual generation",
-                "Support for 30+ languages",
-                "Strong cross-lingual transfer abilities",
-                "Consistent performance across diverse languages"
+                "Excellent performance across 46 languages",
+                "Strong understanding of legal terminology",
+                "Trained on multilingual instructions",
+                "Good cross-lingual transfer"
             ],
             "limitations": [
-                "Less instruction-tuned than dedicated chat models",
-                "May require more specific prompting",
-                "Not specifically optimized for legal domain",
-                "Slightly larger model requiring more GPU memory"
+                "Slightly slower inference than some alternatives",
+                "May require more specific prompting in some languages",
+                "Limited to formal language styles"
             ],
             "use_cases": [
-                "International legal assistance in native languages",
-                "Complex multilingual documentation",
-                "Serving clients from diverse linguistic backgrounds",
-                "Translation and summarization of legal concepts across languages"
+                "International legal documentation",
+                "Multi-jurisdiction legal advice",
+                "Cross-border legal research",
+                "Legal document translation verification"
             ],
-            "documentation": "https://huggingface.co/facebook/xglm-7.5B"
+            "documentation": "https://huggingface.co/bigscience/bloomz-7b1-mt"
+        }
+    },
+    "mgpt": {
+        "id": "sberbank-ai/mGPT",
+        "name": "mGPT",
+        "description": "Multilingual GPT model optimized for 60+ languages including Cyrillic scripts",
+        "type": "base",
+        "parameters": {
+            "max_length": 2048,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+        "training": {
+            "base_model_path": "sberbank-ai/mGPT",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "mgpt-tuned"),
+            "lora_config": {
+                "r": 16,
+                "lora_alpha": 32,
+                "lora_dropout": 0.05,
+                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
+            }
+        },
+        "details": {
+            "full_name": "Multilingual GPT",
+            "capabilities": [
+                "Support for 60+ languages",
+                "Excellent performance with Cyrillic scripts",
+                "Optimized for dialogue generation",
+                "Efficient resource usage"
+            ],
+            "limitations": [
+                "Less specialized in legal domain",
+                "May require additional context for complex legal terms",
+                "Performance varies by language"
+            ],
+            "use_cases": [
+                "Multilingual client communication",
+                "Basic legal document translation",
+                "General legal consultation in multiple languages",
+                "Cross-cultural legal explanation"
+            ],
+            "documentation": "https://huggingface.co/sberbank-ai/mGPT"
+        }
+    },
+    "xglm-4.5b": {
+        "id": "facebook/xglm-4.5B",
+        "name": "XGLM 4.5B",
+        "description": "Lightweight multilingual model with strong Asian language support",
+        "type": "base",
+        "parameters": {
+            "max_length": 2048,
+            "temperature": 0.7,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1,
+        },
+        "training": {
+            "base_model_path": "facebook/xglm-4.5B",
+            "fine_tuned_path": os.path.join(TRAINING_OUTPUT_DIR, "xglm-4.5b-tuned"),
+            "lora_config": {
+                "r": 16,
+                "lora_alpha": 32,
+                "lora_dropout": 0.05,
+                "target_modules": ["q_proj", "v_proj", "k_proj", "o_proj"]
+            }
+        },
+        "details": {
+            "full_name": "Meta XGLM 4.5B",
+            "capabilities": [
+                "Efficient multilingual generation",
+                "Strong Asian language support",
+                "Fast inference speed",
+                "Lower resource requirements"
+            ],
+            "limitations": [
+                "Smaller model size may affect complex reasoning",
+                "Less specialized for legal domain",
+                "May require more context for accurate responses"
+            ],
+            "use_cases": [
+                "Quick multilingual responses",
+                "Asian language legal support",
+                "Basic legal document analysis",
+                "Rapid cross-lingual summarization"
+            ],
+            "documentation": "https://huggingface.co/facebook/xglm-4.5B"
         }
     }
 }
