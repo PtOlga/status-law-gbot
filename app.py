@@ -539,6 +539,13 @@ def format_friendly_error(api_error):
     elif "401" in api_error:
         return "⚠️ Authentication error. Please check your API key."
         
+    elif "403" in api_error or "Forbidden" in api_error:
+        return ("⚠️ Access Forbidden\n\n"
+                "Please check:\n"
+                "1. Your Hugging Face token has proper permissions\n"
+                "2. You have access to the requested model\n"
+                "3. The model is currently available")
+        
     else:
         return f"⚠️ Error processing request. Technical details: {api_error[:200]}"    
     
