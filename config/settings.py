@@ -4,9 +4,9 @@ from huggingface_hub import HfApi
 
 # API tokens
 #HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_TOKEN = os.getenv("pro_api_token")
+HF_TOKEN = os.getenv("pro_api_token_2")
 if not HF_TOKEN:
-    raise ValueError("pro_api_token not found in environment variables")    
+    raise ValueError("pro_api_token_2 not found in environment variables")    
     #raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
 # API Configuration
