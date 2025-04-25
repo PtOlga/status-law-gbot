@@ -1,17 +1,44 @@
 import os
 import tempfile
+import logging
 from huggingface_hub import HfApi
 from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# API tokens
-#HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
-HF_TOKEN = os.getenv("pro_api_token_2")
+# Load environment variables
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env')
+load_dotenv(env_path)
+
+# Try different possible token environment variables
+possible_token_vars = [
+    "pro_api_token_2",
+    "HUGGINGFACE_TOKEN",
+    "HF_TOKEN",
+    "HF_API_TOKEN"
+]
+
+HF_TOKEN = None
+for token_var in possible_token_vars:
+    token = os.getenv(token_var)
+    if token:
+        HF_TOKEN = token
+        logger.info(f"Using token from {token_var}")
+        break
+
 if not HF_TOKEN:
-    raise ValueError("pro_api_token_2 not found in environment variables")    
-    #raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
+    error_msg = (
+        "No valid API token found. Please set one of the following environment variables:\n"
+        "- pro_api_token_2\n"
+        "- HUGGINGFACE_TOKEN\n"
+        "- HF_TOKEN\n"
+        "- HF_API_TOKEN\n"
+        "You can set it in your .env file or as a system environment variable."
+    )
+    logger.error(error_msg)
+    raise ValueError(error_msg)
 
 # API Configuration
 API_CONFIG = {
