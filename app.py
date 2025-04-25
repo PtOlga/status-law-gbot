@@ -753,15 +753,21 @@ def respond_and_clear(message, history, conversation_id, system_prompt):
 
 def update_model_info(model_key):
     """Update model information display"""
+    if model_key not in MODELS:
+        return "Model not found"
+    
     model = MODELS[model_key]
+    account_status = "PRO" if IS_PRO_ACCOUNT else "FREE"
+    
     return f"""
-    **Current Model:** {model['name']}
+    ### Current Model: {model['name']}
     
-    **Model ID:** `{model['id']}`
-    
+    **Account Type:** {account_status}
+    **Model ID:** {model['id']}
     **Description:** {model['description']}
-    
     **Type:** {model['type']}
+    
+    {'⚠️ This model requires PRO account' if model_key in PRO_ONLY_MODELS and not IS_PRO_ACCOUNT else ''}
     """
 
 def get_model_details_html(model_key):

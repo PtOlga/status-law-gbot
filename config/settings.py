@@ -1,5 +1,6 @@
 import os
 import tempfile
+from huggingface_hub import HfApi
 
 # API tokens
 HF_TOKEN = os.getenv("HUGGINGFACE_TOKEN")
@@ -18,6 +19,50 @@ API_CONFIG = {
         "Authorization": f"Bearer {HF_TOKEN}"  # явно указываем авторизацию
     }
 }
+
+def check_account_type():
+    """
+    Check HuggingFace account type and adjust settings accordingly
+    Returns:
+        tuple: (is_pro: bool, account_type: str)
+    """
+    try:
+        api = HfApi(token=HF_TOKEN)
+        user_info = api.whoami()
+        account_type = user_info.get("type", "free")
+        plan = user_info.get("plan", "free")
+        
+        is_pro = any([
+            plan.lower() == "pro",
+            account_type.lower() == "pro",
+            "pro" in str(user_info).lower()
+        ])
+        
+        return is_pro, account_type
+    except Exception as e:
+        logger.warning(f"Failed to check account type: {e}")
+        return False, "free"
+
+# Check account type and adjust settings
+IS_PRO_ACCOUNT, ACCOUNT_TYPE = check_account_type()
+
+# Adjust API configuration based on account type
+API_CONFIG.update({
+    "is_paid_tier": IS_PRO_ACCOUNT,
+    "timeout": 30 if IS_PRO_ACCOUNT else 15,
+    "max_retries": 3 if IS_PRO_ACCOUNT else 1
+})
+
+# Define available models based on account type
+PRO_ONLY_MODELS = ["llama-7b", "mistral-7b"]
+FREE_MODELS = ["zephyr-7b"]
+
+# Filter available models based on account type
+if not IS_PRO_ACCOUNT:
+    # Remove pro-only models from MODELS dict
+    MODELS = {k: v for k, v in MODELS.items() if k not in PRO_ONLY_MODELS}
+    # Set default model to a free one
+    DEFAULT_MODEL = "zephyr-7b"
 
 # Dataset configuration
 DATASET_ID = "Rulga/status-law-knowledge-base"
