@@ -160,6 +160,15 @@ logger = logging.getLogger(__name__)
 if not HF_TOKEN:
     raise ValueError("HUGGINGFACE_TOKEN not found in environment variables")
 
+# Test API connection
+api = HfApi(token=HF_TOKEN)
+try:
+    api.whoami()
+    logger.info("Successfully authenticated with Hugging Face")
+except Exception as e:
+    logger.error(f"Authentication failed: {e}")
+    raise
+
 # Global variables
 client = None
 context_store = {}
