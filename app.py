@@ -1191,163 +1191,162 @@ with gr.Blocks(css="""
             
             clear_btn.click(clear_conversation, None, [chatbot, conversation_id])
             
-            
-            
+        
         with gr.Tab("Knowledge Base"):
             gr.Markdown("### Knowledge Base Management")
         
-        with gr.Row():
-            with gr.Column(scale=2):
-                # Отображение источников
-                gr.Markdown("#### Information Sources")
-                sources_list = gr.Dataframe(
-                    value=pd.DataFrame({
-                        "URL": URLS,
-                        "Include": [True for _ in URLS],
-                        "Status": ["Ready" for _ in URLS]
-                    }),
-                    interactive=True,
-                    wrap=True,
-                    row_count=15,
-                    show_label=False
-                )
-                
-                # Статус операций с базой знаний
-                kb_status = gr.Textbox(
-                    label="Operation Status",
-                    interactive=False,
-                    placeholder="Ready",
-                    value="Ready"
-                )
-                
-                # Кнопки для управления базой знаний
-                with gr.Row():
-                    update_kb_btn = gr.Button("Update Knowledge Base", variant="primary")
-                    rebuild_kb_btn = gr.Button("Rebuild Knowledge Base from Scratch", variant="secondary")
+            with gr.Row():
+                with gr.Column(scale=2):
+                    # Отображение источников
+                    gr.Markdown("#### Information Sources")
+                    sources_list = gr.Dataframe(
+                        value=pd.DataFrame({
+                            "URL": URLS,
+                            "Include": [True for _ in URLS],
+                            "Status": ["Ready" for _ in URLS]
+                        }),
+                        interactive=True,
+                        wrap=True,
+                        row_count=15,
+                        show_label=False
+                    )
                     
-                gr.Markdown("""
-                <small>
-                **Update Knowledge Base**: Adds new information to the existing knowledge base.
-                
-                **Rebuild Knowledge Base**: Recreates the entire knowledge base from scratch. Use this if there are inconsistencies.
-                
-                All changes are saved to the Hugging Face dataset.
-                </small>
-                """)
+                    # Статус операций с базой знаний
+                    kb_status = gr.Textbox(
+                        label="Operation Status",
+                        interactive=False,
+                        placeholder="Ready",
+                        value="Ready"
+                    )
+                    
+                    # Кнопки для управления базой знаний
+                    with gr.Row():
+                        update_kb_btn = gr.Button("Update Knowledge Base", variant="primary")
+                        rebuild_kb_btn = gr.Button("Rebuild Knowledge Base from Scratch", variant="secondary")
+                        
+                    gr.Markdown("""
+                    <small>
+                    **Update Knowledge Base**: Adds new information to the existing knowledge base.
+                    
+                    **Rebuild Knowledge Base**: Recreates the entire knowledge base from scratch. Use this if there are inconsistencies.
+                    
+                    All changes are saved to the Hugging Face dataset.
+                    </small>
+                    """)
             
-            with gr.Column(scale=1):
-                # Информация о текущей базе знаний
-                gr.Markdown("#### Knowledge Base Information")
-                
-                # Функция для получения информации о базе знаний
-                def get_kb_info() -> str:
-                    """
-                    Get information about the current state of the knowledge base.
+                with gr.Column(scale=1):
+                    # Информация о текущей базе знаний
+                    gr.Markdown("#### Knowledge Base Information")
                     
-                    Returns:
-                        str: Formatted markdown string containing knowledge base statistics
-                    """
-                    try:
-                        vector_store = load_vector_store()
-                        if vector_store is None or isinstance(vector_store, str):
-                            return """
-                            **Status**: Not found or error
-                            
-                            **Documents**: 0
-                            
-                            **Last updated**: Never
-                            
-                            Please create a knowledge base using the buttons on the left.
-                            """
+                    # Функция для получения информации о базе знаний
+                    def get_kb_info() -> str:
+                        """
+                        Get information about the current state of the knowledge base.
                         
-                        # Get information about vector store
-                        doc_count = len(vector_store.docstore._dict)
-                        sources = set()
-                        
-                        for doc_id, doc in vector_store.docstore._dict.items():
-                            if hasattr(doc, 'metadata') and 'source' in doc.metadata:
-                                sources.add(doc.metadata['source'])
-                        
-                        source_count = len(sources)
-                        
-                        # Если хранилище существует, но источников нет
-                        if source_count == 0:
-                            return """
-                            **Status**: Created but empty
-                            
-                            **Documents**: 0
-                            
-                            **Last updated**: Unknown
-                            
-                            Please rebuild the knowledge base using the button on the left.
-                            """
-                        
-                        # Получаем файл с датой последнего обновления
-                        last_updated = "Unknown"
+                        Returns:
+                            str: Formatted markdown string containing knowledge base statistics
+                        """
                         try:
-                            from src.knowledge_base.dataset import DatasetManager
-                            dataset = DatasetManager()
-                            last_updated = dataset.get_last_update_date() or "Unknown"
+                            vector_store = load_vector_store()
+                            if vector_store is None or isinstance(vector_store, str):
+                                return """
+                                **Status**: Not found or error
+                                
+                                **Documents**: 0
+                                
+                                **Last updated**: Never
+                                
+                                Please create a knowledge base using the buttons on the left.
+                                """
+                            
+                            # Get information about vector store
+                            doc_count = len(vector_store.docstore._dict)
+                            sources = set()
+                            
+                            for doc_id, doc in vector_store.docstore._dict.items():
+                                if hasattr(doc, 'metadata') and 'source' in doc.metadata:
+                                    sources.add(doc.metadata['source'])
+                            
+                            source_count = len(sources)
+                            
+                            # Если хранилище существует, но источников нет
+                            if source_count == 0:
+                                return """
+                                **Status**: Created but empty
+                                
+                                **Documents**: 0
+                                
+                                **Last updated**: Unknown
+                                
+                                Please rebuild the knowledge base using the button on the left.
+                                """
+                            
+                            # Получаем файл с датой последнего обновления
+                            last_updated = "Unknown"
+                            try:
+                                from src.knowledge_base.dataset import DatasetManager
+                                dataset = DatasetManager()
+                                last_updated = dataset.get_last_update_date() or "Unknown"
+                            except Exception as e:
+                                logger.error(f"Error getting last update date: {str(e)}")
+                            
+                            return f"""
+                            **Status**: Active
+                            
+                            **Documents**: {doc_count}
+                            
+                            **Sources**: {source_count}
+                            
+                            **Last updated**: {last_updated}
+                            """
+                            
                         except Exception as e:
-                            logger.error(f"Error getting last update date: {str(e)}")
-                        
-                        return f"""
-                        **Status**: Active
-                        
-                        **Documents**: {doc_count}
-                        
-                        **Sources**: {source_count}
-                        
-                        **Last updated**: {last_updated}
-                        """
-                        
-                    except Exception as e:
-                        return f"""
-                        **Status**: Error
-                        
-                        **Details**: {str(e)}
-                        
-                        Please try rebuilding the knowledge base.
-                        """
-                
-                kb_info = gr.Markdown(value=get_kb_info())
-                refresh_kb_info_btn = gr.Button("Refresh Information")
+                            return f"""
+                            **Status**: Error
+                            
+                            **Details**: {str(e)}
+                            
+                            Please try rebuilding the knowledge base.
+                            """
+                    
+                    kb_info = gr.Markdown(value=get_kb_info())
+                    refresh_kb_info_btn = gr.Button("Refresh Information")
 
-    # 3. Добавим обработчики событий для кнопок в конце файла
-    # Добавьте эти обработчики перед строкой "if __name__ == "__main__":"
+        # 3. Добавим обработчики событий для кнопок в конце файла
+        # Добавьте эти обработчики перед строкой "if __name__ == "__main__":"
 
-        # Обработчики для Knowledge Base
-        update_kb_btn.click(
-            fn=update_kb_with_selected,
-            inputs=[sources_list],
-            outputs=[kb_status]
-        )
-        
-        rebuild_kb_btn.click(
-            fn=rebuild_kb_with_selected,
-            inputs=[sources_list],
-            outputs=[kb_status]
-        )
-        
-        # Обновление информации о базе знаний
-        refresh_kb_info_btn.click(
-            fn=get_kb_info,
-            inputs=[],
-            outputs=[kb_info]
-        )
-        
-        # Автоматическое обновление информации после операций с базой знаний
-        update_kb_btn.click(
-            fn=get_kb_info,
-            inputs=[],
-            outputs=[kb_info]
-        )
-        
-        rebuild_kb_btn.click(
-            fn=get_kb_info,
-            inputs=[],
-            outputs=[kb_info]
-        )
+            # Обработчики для Knowledge Base
+            update_kb_btn.click(
+                fn=update_kb_with_selected,
+                inputs=[sources_list],
+                outputs=[kb_status]
+            )
+            
+            rebuild_kb_btn.click(
+                fn=rebuild_kb_with_selected,
+                inputs=[sources_list],
+                outputs=[kb_status]
+            )
+            
+            # Обновление информации о базе знаний
+            refresh_kb_info_btn.click(
+                fn=get_kb_info,
+                inputs=[],
+                outputs=[kb_info]
+            )
+            
+            # Автоматическое обновление информации после операций с базой знаний
+            update_kb_btn.click(
+                fn=get_kb_info,
+                inputs=[],
+                outputs=[kb_info]
+            )
+            
+            rebuild_kb_btn.click(
+                fn=get_kb_info,
+                inputs=[],
+                outputs=[kb_info]
+            )
 
         with gr.Tab("Model Settings"):
             gr.Markdown("### Model Configuration")
