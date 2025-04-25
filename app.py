@@ -29,7 +29,9 @@ from config.settings import (
     DEFAULT_MODEL,
     EMBEDDING_MODEL,
     HF_TOKEN,
-    MODELS
+    MODELS,
+    PRO_ONLY_MODELS,
+    IS_PRO_ACCOUNT
 )
 
 # Local imports - source modules
@@ -758,6 +760,11 @@ def update_model_info(model_key):
     
     model = MODELS[model_key]
     account_status = "PRO" if IS_PRO_ACCOUNT else "FREE"
+    is_pro_model = model_key in PRO_ONLY_MODELS
+    
+    warning = ""
+    if is_pro_model and not IS_PRO_ACCOUNT:
+        warning = "\n\n⚠️ **Warning:** This model requires PRO account. Some features may be limited."
     
     return f"""
     ### Current Model: {model['name']}
@@ -765,9 +772,7 @@ def update_model_info(model_key):
     **Account Type:** {account_status}
     **Model ID:** {model['id']}
     **Description:** {model['description']}
-    **Type:** {model['type']}
-    
-    {'⚠️ This model requires PRO account' if model_key in PRO_ONLY_MODELS and not IS_PRO_ACCOUNT else ''}
+    **Type:** {model['type']}{warning}
     """
 
 def get_model_details_html(model_key):
